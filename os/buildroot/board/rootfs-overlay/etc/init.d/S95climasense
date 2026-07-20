@@ -7,7 +7,7 @@ working_dir="/opt/climasense/edge"
 
 case "$1" in
   start)
-    [ -f /data/climasense/config.json ] || { echo "ClimaSense: falta /data/climasense/config.json"; exit 1; }
+    [ -f /data/climasense/.env ] || { echo "ClimaSense: falta /data/climasense/.env"; exit 1; }
     echo "Starting $name"
     cd "$working_dir"
     start-stop-daemon -S -b -m -p "$pidfile" -c climasense:climasense -x "$command" -- run main.joss

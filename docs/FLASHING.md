@@ -19,4 +19,4 @@ sudo chmod 0600 /mnt/climasense/data/climasense/activation.code
 sudo umount /mnt/climasense
 ```
 
-Edite la red antes de desmontar. La URL SaaS se fija en `config.example.json` durante el build; el dispositivo obtiene identidad y token al consumir el codigo. Sustituya `/dev/sdX2` solo despues de verificar el dispositivo correcto.
+Edite la red antes de desmontar. La URL SaaS se fija en `edge/env.example` o `.env` durante el build; el dispositivo obtiene identidad y token al consumir el codigo. Sustituya `/dev/sdX2` solo despues de verificar el dispositivo correcto.

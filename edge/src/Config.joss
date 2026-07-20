@@ -1,33 +1,75 @@
 class EdgeConfig {
-    func load(string $path) {
-        $content = file_get_contents($path)
-        empty($content) ? {
-            throw "No se pudo leer la configuracion Edge: " . $path
-        } : {}
+    func load() {
+        $token_file = System::env("DEVICE_TOKEN_FILE", System::env("CLIMASENSE_TOKEN_FILE", "/data/climasense/device.token"))
+        $device_id = System::env("DEVICE_ID", "replace-after-provisioning")
+        $hardware_id = System::env("HARDWARE_ID", System::env("CLIMASENSE_HARDWARE_ID", "replace-after-provisioning"))
+        $device_name = System::env("DEVICE_NAME", System::env("CLIMASENSE_DEVICE_NAME", "climasense-edge"))
+        $location = System::env("DEVICE_LOCATION", "")
+        $firmware_version = System::env("DEVICE_FIRMWARE_VERSION", "0.2.0")
 
-        $config = JSON::parse($content)
-        empty($config) ? {
-            throw "La configuracion Edge no contiene JSON valido"
-        } : {}
+        $sensor_bus = System::env("SENSOR_BUS", 1)
+        $sensor_address = System::env("SENSOR_ADDRESS", "auto")
+        $sample_interval = System::env("SENSOR_SAMPLE_INTERVAL", 30)
+        $temp_oversampling = System::env("SENSOR_TEMP_OVERSAMPLING", 1)
+        $press_oversampling = System::env("SENSOR_PRESS_OVERSAMPLING", 4)
+        $filter = System::env("SENSOR_FILTER", 2)
+        $timeout_ms = System::env("SENSOR_TIMEOUT_MS", 1000)
+        $max_retries = System::env("SENSOR_MAX_RETRIES", 3)
 
-        $device = $config["device"]
-        $sensor = $config["sensor"]
-        $server = $config["server"]
-        $storage = $config["storage"]
-        $device_id = $device["id"]
-        $token_file = $device["token_file"]
-        $base_url = $server["base_url"]
-        $websocket_path = $server["websocket_path"]
-        $database_path = $storage["database_path"]
-        empty($device_id) ? { throw "device.id es obligatorio" } : {}
-        empty($token_file) ? { throw "device.token_file es obligatorio" } : {}
-        empty($base_url) ? { throw "server.base_url es obligatorio" } : {}
-        empty($websocket_path) ? { throw "server.websocket_path es obligatorio" } : {}
-        empty($database_path) ? { throw "storage.database_path es obligatorio" } : {}
-        ($sensor["sample_interval_seconds"] > 0) ? {} : { throw "sensor.sample_interval_seconds debe ser mayor que cero" }
-        ($sensor["max_retries"] >= 1 && $sensor["max_retries"] <= 10) ? {} : { throw "sensor.max_retries debe estar entre 1 y 10" }
-        ($server["batch_size"] >= 1 && $server["batch_size"] <= 100) ? {} : { throw "server.batch_size debe estar entre 1 y 100" }
-        ($storage["max_offline_records"] > 0) ? {} : { throw "storage.max_offline_records debe ser mayor que cero" }
-        return $config
+        $base_url = System::env("SERVER_BASE_URL", "http://127.0.0.1:8080")
+        $activation_path = System::env("SERVER_ACTIVATION_PATH", "/api/v1/edge/activate")
+        $websocket_path = System::env("SERVER_WEBSOCKET_PATH", "/ws/edge")
+        $transport = System::env("SERVER_TRANSPORT", "websocket")
+        $telemetry_path = System::env("SERVER_TELEMETRY_PATH", "/api/v1/telemetry/batch")
+        $timeout_seconds = System::env("SERVER_TIMEOUT_SECONDS", 15)
+        $batch_size = System::env("SERVER_BATCH_SIZE", 50)
+
+        $database_path = System::env("STORAGE_DATABASE_PATH", "/data/climasense/edge.sqlite")
+        $max_offline_records = System::env("STORAGE_MAX_OFFLINE_RECORDS", 50000)
+
+        empty($device_id) ? { throw "DEVICE_ID es obligatorio en el entorno (.env)" } : {}
+        empty($token_file) ? { throw "DEVICE_TOKEN_FILE es obligatorio en el entorno (.env)" } : {}
+        empty($base_url) ? { throw "SERVER_BASE_URL es obligatorio en el entorno (.env)" } : {}
+        empty($websocket_path) ? { throw "SERVER_WEBSOCKET_PATH es obligatorio en el entorno (.env)" } : {}
+        empty($database_path) ? { throw "STORAGE_DATABASE_PATH es obligatorio en el entorno (.env)" } : {}
+
+        ($sample_interval > 0) ? {} : { throw "SENSOR_SAMPLE_INTERVAL debe ser mayor que cero" }
+        ($max_retries >= 1 && $max_retries <= 10) ? {} : { throw "SENSOR_MAX_RETRIES debe estar entre 1 y 10" }
+        ($batch_size >= 1 && $batch_size <= 100) ? {} : { throw "SERVER_BATCH_SIZE debe estar entre 1 y 100" }
+        ($max_offline_records > 0) ? {} : { throw "STORAGE_MAX_OFFLINE_RECORDS debe ser mayor que cero" }
+
+        return {
+            "device": {
+                "id": $device_id,
+                "hardware_id": $hardware_id,
+                "name": $device_name,
+                "location": $location,
+                "token_file": $token_file,
+                "firmware_version": $firmware_version
+            },
+            "sensor": {
+                "bus": $sensor_bus,
+                "address": $sensor_address,
+                "sample_interval_seconds": $sample_interval,
+                "temperature_oversampling": $temp_oversampling,
+                "pressure_oversampling": $press_oversampling,
+                "filter": $filter,
+                "timeout_ms": $timeout_ms,
+                "max_retries": $max_retries
+            },
+            "server": {
+                "base_url": $base_url,
+                "activation_path": $activation_path,
+                "websocket_path": $websocket_path,
+                "transport": $transport,
+                "telemetry_path": $telemetry_path,
+                "timeout_seconds": $timeout_seconds,
+                "batch_size": $batch_size
+            },
+            "storage": {
+                "database_path": $database_path,
+                "max_offline_records": $max_offline_records
+            }
+        }
     }
 }

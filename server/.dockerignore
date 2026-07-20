@@ -1,0 +1,11 @@
+.git
+.gitignore
+.env
+env.joss
+*.sqlite
+*.sqlite3
+storage/*.sqlite
+storage/*.sqlite3
+storage/logs/*
+tests/server-test.sqlite*
+log.txt

@@ -16,6 +16,6 @@ cp -R "$artifacts/edge/." "$target_dir/opt/climasense/edge/"
 cp -R "$artifacts/plugins/." "$target_dir/opt/climasense/edge/plugins/"
 
 install -d -o 1000 -g 1000 -m 0750 "$target_dir/data/climasense"
-install -o 1000 -g 1000 -m 0640 "$artifacts/config.example.json" "$target_dir/data/climasense/config.example.json"
+install -o 1000 -g 1000 -m 0600 "$artifacts/env.example" "$target_dir/data/climasense/.env"
 
 find "$target_dir/opt/climasense/edge" -type f -name '*.joss' -exec chmod 0644 {} \;

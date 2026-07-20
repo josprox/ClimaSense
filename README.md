@@ -22,4 +22,4 @@ export JOSS_SOURCE=/ruta/de/solo/lectura/Joss-language
 
 `build-os.sh` usa Buildroot 2025.02.16 LTS y produce `dist/climasense-os-rpi-zero-2-w.img`. La imagen fue construida y auditada estructuralmente; el arranque y los perifericos en hardware real todavia no han sido validados. Consulta `docs/IMPLEMENTATION_STATUS.md`.
 
-Nunca copie `env.example` o `config.example.json` sin sustituir credenciales mediante un canal seguro. Los tokens no deben entrar al repositorio. El primer administrador se crea en `/setup` con `SAAS_BOOTSTRAP_KEY` (o `APP_KEY` como fallback de primera instalacion).
+Nunca copie `env.example` sin sustituir credenciales mediante un canal seguro. Los tokens no deben entrar al repositorio. El primer administrador se crea en `/setup` con `SAAS_BOOTSTRAP_KEY` (o `APP_KEY` como fallback de primera instalacion).
