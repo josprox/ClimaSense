@@ -17,3 +17,4 @@
 [2026-07-20 14:05:23] [ERROR] [Auth] Database error looking up 'hi@joss.red': cannot parse `postgres://josprox_climasense:xxxxxx@https:%2F%2Fhestia.josprox.com:5432/josprox_climasense?sslmode=disable`: failed to parse as URL (invalid URL escape "%2F")
 [2026-07-20 14:05:33] [ERROR] [Auth] Database error looking up 'joss@int.josprox.com': cannot parse `postgres://josprox_climasense:xxxxxx@https:%2F%2Fhestia.josprox.com:5432/josprox_climasense?sslmode=disable`: failed to parse as URL (invalid URL escape "%2F")
 [2026-07-20 14:08:44] [ERROR] [Auth] Database error looking up 'hi@joss.red': cannot parse `postgres://josprox_climasense:xxxxxx@https:%2F%2Fhestia.josprox.com:5432/josprox_climasense?sslmode=disable`: failed to parse as URL (invalid URL escape "%2F")
+[2026-07-20 14:15:04] [INFO] [Auth] Login successful for 'hi@joss.red' (ID: 3)

@@ -9,7 +9,7 @@ done
 
 cp "$root/server/tests/env.test.joss" "$root/server/env.joss"
 trap 'rm -f "$root/server/env.joss" "$root/server/tests/server-test.sqlite"*' EXIT INT TERM
-(cd "$root/server" && joss migrate && joss run tests/schema.joss && joss run tests/saas-schema.joss && joss run tests/database-ready.joss && joss run tests/syntax.joss)
+(cd "$root/server" && joss migrate && joss run tests/schema.joss && joss run tests/saas-schema.joss && joss run tests/database-ready.joss && joss run tests/client-flow.joss && joss run tests/syntax.joss)
 
 (
   cd "$root/server"
@@ -36,12 +36,14 @@ trap 'rm -f "$root/server/env.joss" "$root/server/tests/server-test.sqlite"*' EX
   provision_status="$(curl -s -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: application/json' --data '{}' http://127.0.0.1:18080/api/v1/devices/provision)"
   ready_status="$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:18080/ready)"
   login_status="$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:18080/login)"
+  register_status="$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:18080/register)"
   admin_status="$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:18080/api/v1/admin/summary)"
   tenant_status="$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:18080/api/v1/tenant/summary)"
   [ "$operator_status" = "401" ] || { echo "operator status=$operator_status, want 401" >&2; exit 1; }
   [ "$provision_status" = "401" ] || { echo "provision status=$provision_status, want 401" >&2; exit 1; }
   [ "$ready_status" = "200" ] || { echo "ready status=$ready_status, want 200" >&2; exit 1; }
   [ "$login_status" = "200" ] || { echo "login status=$login_status, want 200" >&2; exit 1; }
+  [ "$register_status" = "200" ] || { echo "register status=$register_status, want 200" >&2; exit 1; }
   [ "$admin_status" = "401" ] || { echo "admin status=$admin_status, want 401" >&2; exit 1; }
   [ "$tenant_status" = "401" ] || { echo "tenant status=$tenant_status, want 401" >&2; exit 1; }
   echo "server-http-ok"

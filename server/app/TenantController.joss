@@ -1,27 +1,107 @@
 class TenantController {
     func index() {
-        try { SaaSAuth::organizationId() } catch ($error) { return Response::redirect("/login") }
+        (Auth::check() == true) ? {} : { return Response::redirect("/login") }
         return View::render("saas.tenant", {"title": "ClimaSense para empresas"})
     }
 
     func summary() {
-        $organization_id = nil
-        try { $organization_id = SaaSAuth::organizationId() } catch ($error) { return ApiResponse::error("Sesion de empresa requerida", 401) }
+        $user_id = nil
+        try { $user_id = SaaSAuth::userId() } catch ($error) { return ApiResponse::error("Sesion requerida", 401) }
+        $membership = SaaSAuth::findMembership()
+        empty($membership) ? {
+            return ApiResponse::json({
+                "has_organization": false,
+                "organization": nil,
+                "locations": [],
+                "devices": [],
+                "activation_codes": [],
+                "measurements": [],
+                "analyses": [],
+                "generated_at": System::now()
+            }, 200)
+        } : {}
+
+        $organization_id = $membership["organization_id"]
         $organization = GranDB::table("organizations")->where("id", $organization_id)->first()
         $locations = GranDB::table("locations")->where("organization_id", $organization_id)->latest("created_at")->get()
         $devices = GranDB::table("devices")->where("organization_id", $organization_id)->latest("updated_at")->get()
+        $activation_codes = GranDB::table("activation_codes")->where("organization_id", $organization_id)->latest("created_at")->get()
+
         $device_ids = []
         foreach ($devices as $device) { $device_ids = append($device_ids, $device["device_id"]) }
         $measurements = []
         (count($device_ids) > 0) ? { $measurements = GranDB::table("telemetry_measurements")->whereIn("device_id", $device_ids)->latest("measured_at")->limit(60)->get() } : {}
+
         return ApiResponse::json({
+            "has_organization": true,
             "organization": $organization,
             "locations": $locations,
             "devices": $devices,
+            "activation_codes": $activation_codes,
             "measurements": $measurements,
             "analyses": GranDB::table("environmental_analyses")->where("organization_id", $organization_id)->latest("created_at")->limit(30)->get(),
             "generated_at": System::now()
         }, 200)
+    }
+
+    func createOrganization() {
+        $user_id = nil
+        try { $user_id = SaaSAuth::userId() } catch ($error) { return ApiResponse::error("Sesion requerida", 401) }
+        $membership = SaaSAuth::findMembership()
+        empty($membership) ? {} : { return ApiResponse::error("El usuario ya pertenece a una empresa", 409) }
+
+        $name = Request::input("name", "")
+        (empty($name) == true) ? { return ApiResponse::error("El nombre de la empresa es obligatorio", 422) } : {}
+        $user = GranDB::table("users")->where("id", $user_id)->first()
+        $contact_email = Request::input("contact_email", $user["email"])
+        $slug = Request::input("slug", "")
+        (empty($slug) == true) ? { $slug = "org-" . System::now() } : {}
+
+        $existing_org = GranDB::table("organizations")->where("slug", $slug)->first()
+        empty($existing_org) ? {} : { $slug = $slug . "-" . System::now() }
+
+        GranDB::table("organizations")->insert({
+            "name": $name,
+            "slug": $slug,
+            "contact_email": $contact_email,
+            "plan": "starter",
+            "status": "active",
+            "created_at": System::now(),
+            "updated_at": System::now()
+        })
+
+        $org = GranDB::table("organizations")->where("slug", $slug)->first()
+        $organization_id = $org["id"]
+
+        GranDB::table("organization_users")->insert({
+            "organization_id": $organization_id,
+            "user_id": $user_id,
+            "organization_role": "owner",
+            "created_at": System::now()
+        })
+
+        return ApiResponse::json({"ok": true, "organization": $org}, 201)
+    }
+
+    func createActivationCode() {
+        $organization_id = nil
+        try { $organization_id = SaaSAuth::organizationId() } catch ($error) { return ApiResponse::error("Sesion de empresa requerida", 401) }
+        $label = Request::input("label", "Dispositivo ClimaSense Edge")
+        $user_id = SaaSAuth::userId()
+
+        $raw_code = "CS-" . Str::upper(Str::random(4)) . "-" . Str::upper(Str::random(4)) . "-" . Str::upper(Str::random(4))
+        $code_hash = ClimaSenseTransport::hashToken($raw_code)
+
+        GranDB::table("activation_codes")->insert({
+            "organization_id": $organization_id,
+            "code_hash": $code_hash,
+            "label": $label,
+            "status": "available",
+            "created_by_user_id": $user_id,
+            "created_at": System::now()
+        })
+
+        return ApiResponse::json({"ok": true, "code": $raw_code, "label": $label}, 201)
     }
 
     func createLocation() {

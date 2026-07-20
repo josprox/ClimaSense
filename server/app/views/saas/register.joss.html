@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>{{ $title }}</title>
+  <link rel="stylesheet" href="/public/css/saas.css">
+</head>
+<body class="auth-page">
+  <main class="auth-shell">
+    <section class="auth-story">
+      <a class="brand" href="/"><span class="brand-mark">C</span><span>ClimaSense <b>AI</b></span></a>
+      <div class="story-copy">
+        <span class="eyebrow">Plataforma SaaS Multiempresa</span>
+        <h1>Crea tu cuenta de cliente en segundos.</h1>
+        <p>Registra tu empresa, conecta tus dispositivos ClimaSense Edge (Raspberry Pi + BMP280) y monitorea el ambiente en tiempo real.</p>
+        <div class="signal-card"><span class="live-dot"></span><div><strong>Monitoreo ambiental inteligente</strong><small>Activación mediante código de un solo uso</small></div></div>
+      </div>
+    </section>
+    <section class="auth-panel">
+      <form id="register-form" class="auth-form">
+        <span class="eyebrow">Registro de Cliente</span>
+        <h2>Crear una nueva cuenta</h2>
+        <p>Ingresa tus datos para comenzar.</p>
+        <label>Nombre completo<input name="name" type="text" autocomplete="name" required placeholder="Juan Pérez"></label>
+        <label>Correo electrónico<input name="email" type="email" autocomplete="username" required placeholder="tu@empresa.com"></label>
+        <label>Contraseña<input name="password" type="password" autocomplete="new-password" required placeholder="••••••••"></label>
+        <button class="primary-button" type="submit">Crear mi cuenta <span>→</span></button>
+        <p id="form-message" class="form-message" role="status"></p>
+        <a class="setup-link" href="/login">¿Ya tienes cuenta? Inicia sesión aquí</a>
+      </form>
+    </section>
+  </main>
+  <script>
+    document.getElementById("register-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const msg = document.getElementById("form-message");
+      msg.textContent = "";
+      const body = Object.fromEntries(new FormData(e.target));
+      try {
+        const res = await fetch("/api/v1/auth/register", {
+          method: "POST",
+          headers: {"Content-Type": "application/json", "Accept": "application/json"},
+          body: JSON.stringify(body)
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || "Error al registrar la cuenta");
+        msg.style.color = "#10b981";
+        msg.textContent = "¡Cuenta creada con éxito! Redirigiendo...";
+        setTimeout(() => location.assign(data.redirect || "/app"), 1000);
+      } catch (err) {
+        msg.style.color = "#ef4444";
+        msg.textContent = err.message;
+      }
+    });
+  </script>
+</body>
+</html>

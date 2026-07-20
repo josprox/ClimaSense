@@ -4,6 +4,28 @@ class SaaSAuthController {
         return View::render("saas.login", {"title": "Acceso a ClimaSense"})
     }
 
+    func registerPage() {
+        (Auth::check() == true) ? { return Response::redirect("/app") } : {}
+        return View::render("saas.register", {"title": "Registro de Cliente — ClimaSense"})
+    }
+
+    func register() {
+        $email = Request::input("email", "")
+        $password = Request::input("password", "")
+        $name = Request::input("name", "Cliente")
+        (empty($email) || empty($password)) ? { return ApiResponse::error("Correo y contrasena son obligatorios", 422) } : {}
+
+        $existing = GranDB::table("users")->where("email", $email)->first()
+        empty($existing) ? {} : { return ApiResponse::error("El correo electronico ya esta registrado", 409) }
+
+        $created = Auth::create({"username": $email, "first_name": $name, "last_name": "", "email": $email, "password": $password, "phone": "", "role_id": 2})
+        ($created == false) ? { return ApiResponse::error("No se pudo crear la cuenta de usuario", 500) } : {}
+        GranDB::table("users")->where("email", $email)->update({"verificado": 1, "updated_at": System::now()})
+
+        $token = Auth::attempt($email, $password)
+        return ApiResponse::json({"ok": true, "message": "Cuenta creada con exito", "redirect": "/app"}, 201)->withCookie("joss_token", $token)
+    }
+
     func setupPage() {
         return View::render("saas.setup", {"title": "Configurar administrador"})
     }

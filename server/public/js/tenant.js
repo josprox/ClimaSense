@@ -4,15 +4,103 @@
   const date=value=>value?new Date(String(value).replace(" ","T")).toLocaleString("es-MX",{dateStyle:"medium",timeStyle:"short"}):"—";
   const api=async(url,options={})=>{const response=await fetch(url,{headers:{Accept:"application/json",...(options.body?{"Content-Type":"application/json"}:{})},...options});if(response.status===401){location.assign("/login");throw new Error("Sesión expirada");}const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.error||`HTTP ${response.status}`);return data;};
   let locations=[];
-  const render=data=>{locations=data.locations||[];const devices=data.devices||[],analyses=data.analyses||[],measurements=data.measurements||[];$("organization-name").textContent=data.organization?.name||"Tu ambiente, en contexto";$("t-locations").textContent=locations.length;$("t-devices").textContent=devices.length;$("t-online").textContent=devices.filter(d=>d.status==="active").length;$("t-analyses").textContent=analyses.length;
-    const latest=analyses[0];const badge=$("overall-status");badge.className=`status-badge ${latest?.severity||""}`;badge.textContent=latest?({ok:"Óptimo",warning:"Atención",alert:"Requiere acción"}[latest.severity]||latest.verdict):"Esperando datos";$("status-title").textContent=latest?(latest.severity==="ok"?"El ambiente está dentro del rango":"Hay una condición que revisar"):"Conecta tu primer ClimaSense Edge";$("status-copy").textContent=latest?.recommendation||"Cuando el dispositivo envíe muestras, el análisis aparecerá aquí.";$("indoor-temp").textContent=latest?`${Number(latest.indoor_avg_c).toFixed(1)}°`:"—";$("outdoor-temp").textContent=latest?.outdoor_c!=null?`${Number(latest.outdoor_c).toFixed(1)}°`:"—";
+
+  const render=data=>{
+    const noOrgBanner=$("no-org-banner");
+    if(data.has_organization===false){
+      if(noOrgBanner)noOrgBanner.style.display="flex";
+      $("organization-name").textContent="Sin Empresa Registrada";
+      $("t-locations").textContent="0";
+      $("t-devices").textContent="0";
+      $("t-online").textContent="0";
+      $("t-analyses").textContent="0";
+      return;
+    }
+    if(noOrgBanner)noOrgBanner.style.display="none";
+
+    locations=data.locations||[];
+    const devices=data.devices||[],analyses=data.analyses||[],codes=data.activation_codes||[];
+    $("organization-name").textContent=data.organization?.name||"Tu ambiente, en contexto";
+    $("t-locations").textContent=locations.length;
+    $("t-devices").textContent=devices.length;
+    $("t-online").textContent=devices.filter(d=>d.status==="active").length;
+    $("t-analyses").textContent=analyses.length;
+
+    const latest=analyses[0];
+    const badge=$("overall-status");
+    badge.className=`status-badge ${latest?.severity||""}`;
+    badge.textContent=latest?({ok:"Óptimo",warning:"Atención",alert:"Requiere acción"}[latest.severity]||latest.verdict):"Esperando datos";
+    $("status-title").textContent=latest?(latest.severity==="ok"?"El ambiente está dentro del rango":"Hay una condición que revisar"):"Conecta tu primer ClimaSense Edge";
+    $("status-copy").textContent=latest?.recommendation||"Cuando el dispositivo envíe muestras, el análisis aparecerá aquí.";
+    $("indoor-temp").textContent=latest?`${Number(latest.indoor_avg_c).toFixed(1)}°`:"—";
+    $("outdoor-temp").textContent=latest?.outdoor_c!=null?`${Number(latest.outdoor_c).toFixed(1)}°`:"—";
+
     $("tenant-analysis").innerHTML=analyses.length?analyses.map(a=>`<div class="analysis-item ${esc(a.severity)}"><span class="severity"></span><div><strong>${Number(a.indoor_avg_c).toFixed(1)}°C · ${esc(a.verdict)}</strong><p>${esc(a.recommendation)}</p></div><time>${date(a.created_at)}</time></div>`).join(""):'<p class="empty-state">Aún no hay análisis.</p>';
     $("locations-list").innerHTML=locations.length?locations.map(l=>`<div class="data-row"><div><strong>${esc(l.name)}</strong><small>${esc(l.location_type)} · ${Number(l.desired_min_c).toFixed(1)}–${Number(l.desired_max_c).toFixed(1)}°C</small></div><span class="tag">${esc(l.timezone)}</span></div>`).join(""):'<p class="empty-state">Sin ubicaciones.</p>';
+    
+    $("codes-list").innerHTML=codes.length?codes.map(c=>`<div class="data-row"><div><strong>${esc(c.label||"Código de activación")}</strong><small>Creado: ${date(c.created_at)}</small></div><span class="tag ${c.status==="claimed"?"claimed":"available"}">${c.status==="claimed"?"Reclamado por "+esc(c.claimed_by_device):"Disponible"}</span></div>`).join(""):'<p class="empty-state">Sin códigos generados.</p>';
+
     $("devices-list").innerHTML=devices.length?devices.map(d=>`<article class="device-card"><header><strong>${esc(d.name)}</strong><span class="tag">${esc(d.status)}</span></header><p>${esc(d.device_id)}<br>Último contacto: ${date(d.last_seen_at)}</p><select data-device="${esc(d.device_id)}"><option value="">Asignar ubicación…</option>${locations.map(l=>`<option value="${Number(l.id)}" ${Number(d.location_id)===Number(l.id)?"selected":""}>${esc(l.name)}</option>`).join("")}</select></article>`).join(""):'<p class="empty-state">Sin dispositivos activados.</p>';
     document.querySelectorAll("[data-device]").forEach(select=>select.addEventListener("change",()=>{if(!select.value)return;api(`/api/v1/tenant/devices/${encodeURIComponent(select.dataset.device)}/location`,{method:"POST",body:JSON.stringify({location_id:Number(select.value)})}).then(load).catch(error=>alert(error.message));}));
   };
+
   const load=()=>api("/api/v1/tenant/summary").then(render).catch(console.error);
-  document.querySelectorAll("[data-open]").forEach(button=>button.addEventListener("click",()=>$(button.dataset.open).showModal()));document.querySelectorAll("[data-close]").forEach(button=>button.addEventListener("click",()=>$(button.dataset.close).close()));
-  $("location-form").addEventListener("submit",event=>{event.preventDefault();const body=Object.fromEntries(new FormData(event.currentTarget));["latitude","longitude","desired_min_c","desired_max_c"].forEach(k=>body[k]=Number(body[k]));api("/api/v1/tenant/locations",{method:"POST",body:JSON.stringify(body)}).then(()=>{event.currentTarget.reset();$("location-dialog").close();load();}).catch(error=>$("location-message").textContent=error.message);});
-  document.querySelector("[data-logout]").addEventListener("click",()=>api("/api/v1/auth/logout",{method:"POST",body:"{}"}).then(()=>location.assign("/login")));$("refresh-tenant").addEventListener("click",load);load();setInterval(load,30000);
+
+  document.querySelectorAll("[data-open]").forEach(button=>button.addEventListener("click",()=>{const el=$(button.dataset.open);if(el)el.showModal();}));
+  document.querySelectorAll("[data-close]").forEach(button=>button.addEventListener("click",()=>{const el=$(button.dataset.close);if(el)el.close();}));
+
+  const orgForm=$("org-form");
+  if(orgForm){
+    orgForm.addEventListener("submit",event=>{
+      event.preventDefault();
+      const body=Object.fromEntries(new FormData(event.currentTarget));
+      api("/api/v1/tenant/organizations",{method:"POST",body:JSON.stringify(body)}).then(()=>{
+        event.currentTarget.reset();
+        $("org-dialog").close();
+        load();
+      }).catch(error=>$("org-message").textContent=error.message);
+    });
+  }
+
+  const activationForm=$("activation-form");
+  if(activationForm){
+    activationForm.addEventListener("submit",event=>{
+      event.preventDefault();
+      const body=Object.fromEntries(new FormData(event.currentTarget));
+      api("/api/v1/tenant/activation-codes",{method:"POST",body:JSON.stringify(body)}).then(data=>{
+        event.currentTarget.reset();
+        $("activation-dialog").close();
+        $("generated-code-display").textContent=data.code;
+        $("code-result-dialog").showModal();
+        load();
+      }).catch(error=>$("activation-message").textContent=error.message);
+    });
+  }
+
+  const copyBtn=$("copy-code-btn");
+  if(copyBtn){
+    copyBtn.addEventListener("click",()=>{
+      const code=$("generated-code-display").textContent;
+      navigator.clipboard.writeText(code).then(()=>{
+        copyBtn.textContent="¡Copiado!";
+        setTimeout(()=>copyBtn.textContent="Copiar Código",2000);
+      });
+    });
+  }
+
+  $("location-form").addEventListener("submit",event=>{
+    event.preventDefault();
+    const body=Object.fromEntries(new FormData(event.currentTarget));
+    ["latitude","longitude","desired_min_c","desired_max_c"].forEach(k=>body[k]=Number(body[k]));
+    api("/api/v1/tenant/locations",{method:"POST",body:JSON.stringify(body)}).then(()=>{
+      event.currentTarget.reset();
+      $("location-dialog").close();
+      load();
+    }).catch(error=>$("location-message").textContent=error.message);
+  });
+
+  document.querySelector("[data-logout]").addEventListener("click",()=>api("/api/v1/auth/logout",{method:"POST",body:"{}"}).then(()=>location.assign("/login")));
+  $("refresh-tenant").addEventListener("click",load);
+  load();
+  setInterval(load,30000);
 })();
