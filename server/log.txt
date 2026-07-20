@@ -21,3 +21,5 @@
 [2026-07-20 14:31:13] [INFO] [Auth] Login successful for 'joss@int.josprox.com' (ID: 4)
 [2026-07-20 14:31:42] [INFO] [Auth] Login successful for 'joss@int.josprox.com' (ID: 4)
 [2026-07-20 14:42:38] [INFO] [Auth] Login successful for 'hi@joss.red' (ID: 3)
+[2026-07-20 14:45:13] [INFO] [Auth] Login successful for 'hi@joss.red' (ID: 3)
+[2026-07-20 14:45:45] [INFO] [Auth] Login successful for 'joss@int.josprox.com' (ID: 4)
