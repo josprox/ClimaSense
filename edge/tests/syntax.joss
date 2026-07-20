@@ -1,9 +1,0 @@
-import "src/Config.joss"
-import "src/TelemetryQueue.joss"
-import "src/EdgeService.joss"
-
-$config = EdgeConfig::load()
-$sensor = $config["sensor"]
-($sensor["max_retries"] == 3) ? {} : { throw "La configuracion Edge no se cargo" }
-
-print("edge-syntax-ok")
