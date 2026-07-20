@@ -1,6 +1,7 @@
 class TenantController {
     func index() {
         (Auth::check() == true) ? {} : { return Response::redirect("/login") }
+        (Auth::hasRole("admin") == true) ? { return Response::redirect("/admin") } : {}
         return View::render("saas.tenant", {"title": "ClimaSense para empresas"})
     }
 

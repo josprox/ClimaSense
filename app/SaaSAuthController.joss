@@ -2,14 +2,20 @@ class SaaSAuthController {
     func loginPage() {
         $token = Request::cookie("joss_token")
         (empty($token) == true) ? { return View::render("saas.login", {"title": "Acceso a ClimaSense"}) } : {}
-        (Auth::check() == true) ? { return Response::redirect("/app") } : {}
+        (Auth::check() == true) ? {
+            $dest = (Auth::hasRole("admin") == true) ? "/admin" : "/app"
+            return Response::redirect($dest)
+        } : {}
         return View::render("saas.login", {"title": "Acceso a ClimaSense"})
     }
 
     func registerPage() {
         $token = Request::cookie("joss_token")
         (empty($token) == true) ? { return View::render("saas.register", {"title": "Registro de Cliente — ClimaSense"}) } : {}
-        (Auth::check() == true) ? { return Response::redirect("/app") } : {}
+        (Auth::check() == true) ? {
+            $dest = (Auth::hasRole("admin") == true) ? "/admin" : "/app"
+            return Response::redirect($dest)
+        } : {}
         return View::render("saas.register", {"title": "Registro de Cliente — ClimaSense"})
     }
 
