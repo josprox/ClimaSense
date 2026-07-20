@@ -16,6 +16,8 @@ with open("/app/env.joss", "w") as f:
     for k, v in os.environ.items():
         if k in ignore or k.startswith(("PYTHON", "PIP", "GPG")):
             continue
+        if k == "DB_HOST":
+            v = v.replace("https://", "").replace("http://", "").rstrip("/")
         val = v.replace("\"", "\\\"")
         f.write(f"{k}=\"{val}\"\n")
 '
