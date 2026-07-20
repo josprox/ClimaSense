@@ -1,9 +1,0 @@
-ctrl_interface=/run/wpa_supplicant
-update_config=0
-country=MX
-
-network={
-    ssid="REPLACE_ME"
-    psk="REPLACE_ME"
-    key_mgmt=WPA-PSK
-}
