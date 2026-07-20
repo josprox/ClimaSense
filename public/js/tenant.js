@@ -90,12 +90,94 @@
     });
   }
 
+  // --- Integración de Geolocalización OpenStreetMap Nominatim & GPS GPS ---
+  const geoAddressInput=$("geo-address-input");
+  const geoResults=$("geo-results");
+  const geoLatInput=$("geo-lat-input");
+  const geoLonInput=$("geo-lon-input");
+  const geoGpsBtn=$("geo-my-location-btn");
+  let geoTimer=null;
+
+  if(geoAddressInput&&geoResults){
+    geoAddressInput.addEventListener("input",()=>{
+      clearTimeout(geoTimer);
+      const query=geoAddressInput.value.trim();
+      if(query.length<3){
+        geoResults.style.display="none";
+        geoResults.innerHTML="";
+        return;
+      }
+      geoTimer=setTimeout(()=>{
+        fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5`)
+          .then(res=>res.json())
+          .then(items=>{
+            if(!items||!items.length){
+              geoResults.style.display="none";
+              return;
+            }
+            geoResults.innerHTML=items.map(item=>`<div data-lat="${item.lat}" data-lon="${item.lon}" data-name="${esc(item.display_name)}" style="padding:8px 12px; cursor:pointer; border-bottom:1px solid rgba(255,255,255,0.05); hover:background:#334155;">${esc(item.display_name)}</div>`).join("");
+            geoResults.style.display="block";
+            geoResults.querySelectorAll("[data-lat]").forEach(div=>{
+              div.addEventListener("click",()=>{
+                geoAddressInput.value=div.dataset.name;
+                geoLatInput.value=Number(div.dataset.lat).toFixed(6);
+                geoLonInput.value=Number(div.dataset.lon).toFixed(6);
+                geoResults.style.display="none";
+              });
+            });
+          })
+          .catch(()=>{
+            geoResults.style.display="none";
+          });
+      },350);
+    });
+
+    document.addEventListener("click",e=>{
+      if(!geoAddressInput.contains(e.target)&&!geoResults.contains(e.target)){
+        geoResults.style.display="none";
+      }
+    });
+  }
+
+  if(geoGpsBtn){
+    geoGpsBtn.addEventListener("click",()=>{
+      if(!navigator.geolocation){
+        alert("Tu navegador no soporta geolocalización GPS.");
+        return;
+      }
+      geoGpsBtn.textContent="Obteniendo…";
+      navigator.geolocation.getCurrentPosition(
+        pos=>{
+          const lat=pos.coords.latitude;
+          const lon=pos.coords.longitude;
+          geoLatInput.value=lat.toFixed(6);
+          geoLonInput.value=lon.toFixed(6);
+          geoGpsBtn.textContent="📍 Mi Ubicación";
+
+          fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`)
+            .then(res=>res.json())
+            .then(data=>{
+              if(data&&data.display_name){
+                geoAddressInput.value=data.display_name;
+              }
+            })
+            .catch(()=>{});
+        },
+        err=>{
+          geoGpsBtn.textContent="📍 Mi Ubicación";
+          alert("No se pudo obtener la ubicación GPS ("+err.message+").");
+        },
+        {enableHighAccuracy:true,timeout:10000}
+      );
+    });
+  }
+
   const locationForm=$("location-form");
   if(locationForm){
     locationForm.addEventListener("submit",event=>{
       event.preventDefault();
       const form=event.currentTarget;
-      const body=Object.fromEntries(new FormData(event.currentTarget));
+      const body=Object.fromEntries(new FormData(form));
       ["latitude","longitude","desired_min_c","desired_max_c"].forEach(k=>body[k]=Number(body[k]));
       api("/api/v1/tenant/locations",{method:"POST",body:JSON.stringify(body)}).then(()=>{
         form.reset();
