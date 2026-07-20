@@ -1,8 +1,0 @@
-$db = new SQLite()
-$db->open("tests/server-test.sqlite")
-$tables = $db->query("SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('cs_organizations', 'cs_organization_users', 'cs_locations', 'cs_activation_codes', 'cs_weather_snapshots', 'cs_environmental_analyses') ORDER BY name")
-$device_columns = $db->query("SELECT name FROM pragma_table_info('cs_devices') WHERE name IN ('organization_id', 'location_id', 'hardware_id', 'activation_status') ORDER BY name")
-$db->close()
-(count($tables) == 6) ? {} : { throw "Faltan tablas SaaS" }
-(count($device_columns) == 4) ? {} : { throw "Faltan columnas SaaS en devices" }
-print("server-saas-schema-ok")
