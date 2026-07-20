@@ -1,7 +1,0 @@
-name: climasense_server
-version: 0.2.0
-type: web
-entry:
-  main: main.joss
-dependencies:
-  climasense_transport: "0.2.0"
