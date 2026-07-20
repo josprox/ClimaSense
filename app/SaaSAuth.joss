@@ -8,9 +8,13 @@ class SaaSAuth {
         (Auth::hasRole("admin") == true) ? { return $user_id } : { throw "Administrador requerido" }
     }
 
-    func membership() {
+    func findMembership() {
         $user_id = SaaSAuth::userId()
-        $membership = GranDB::table("organization_users")->where("user_id", $user_id)->first()
+        return GranDB::table("organization_users")->where("user_id", $user_id)->first()
+    }
+
+    func membership() {
+        $membership = SaaSAuth::findMembership()
         empty($membership) ? { throw "El usuario no pertenece a una empresa" } : {}
         return $membership
     }
