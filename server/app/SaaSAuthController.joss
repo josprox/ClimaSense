@@ -1,9 +1,15 @@
 class SaaSAuthController {
     func loginPage() {
+        $token = Request::cookie("joss_token")
+        (empty($token) == true) ? { return View::render("saas.login", {"title": "Acceso a ClimaSense"}) } : {}
+        (Auth::check() == true) ? { return Response::redirect("/app") } : {}
         return View::render("saas.login", {"title": "Acceso a ClimaSense"})
     }
 
     func registerPage() {
+        $token = Request::cookie("joss_token")
+        (empty($token) == true) ? { return View::render("saas.register", {"title": "Registro de Cliente — ClimaSense"}) } : {}
+        (Auth::check() == true) ? { return Response::redirect("/app") } : {}
         return View::render("saas.register", {"title": "Registro de Cliente — ClimaSense"})
     }
 
@@ -21,7 +27,8 @@ class SaaSAuthController {
         GranDB::table("users")->where("email", $email)->update({"verificado": 1, "updated_at": System::now()})
 
         $token = Auth::attempt($email, $password)
-        return ApiResponse::json({"ok": true, "message": "Cuenta creada con exito", "redirect": "/app"}, 201)->withCookie("joss_token", $token)
+        $cookieHeader = "joss_token=" . $token . "; Path=/; HttpOnly; SameSite=Lax"
+        return ApiResponse::json({"ok": true, "message": "Cuenta creada con exito", "redirect": "/app"}, 201)->withHeader("Set-Cookie", $cookieHeader)->withCookie("joss_token", $token)
     }
 
     func setupPage() {
@@ -35,12 +42,14 @@ class SaaSAuthController {
         $token = Auth::attempt($email, $password)
         ($token == false) ? { return ApiResponse::error("Credenciales invalidas", 401) } : {}
         $destination = (Auth::hasRole("admin") == true) ? "/admin" : "/app"
-        return ApiResponse::json({"ok": true, "redirect": $destination}, 200)->withCookie("joss_token", $token)
+        $cookieHeader = "joss_token=" . $token . "; Path=/; HttpOnly; SameSite=Lax"
+        return ApiResponse::json({"ok": true, "redirect": $destination}, 200)->withHeader("Set-Cookie", $cookieHeader)->withCookie("joss_token", $token)
     }
 
     func logout() {
         Auth::logout()
-        return ApiResponse::json({"ok": true, "redirect": "/login"}, 200)->withCookie("joss_token", "")
+        $cookieHeader = "joss_token=; Path=/; HttpOnly; Max-Age=0"
+        return ApiResponse::json({"ok": true, "redirect": "/login"}, 200)->withHeader("Set-Cookie", $cookieHeader)->withCookie("joss_token", "")
     }
 
     func bootstrapAdmin() {
