@@ -1,11 +1,9 @@
 class SaaSAuthController {
     func loginPage() {
-        (Auth::check() == true) ? { return Response::redirect("/") } : {}
         return View::render("saas.login", {"title": "Acceso a ClimaSense"})
     }
 
     func registerPage() {
-        (Auth::check() == true) ? { return Response::redirect("/app") } : {}
         return View::render("saas.register", {"title": "Registro de Cliente — ClimaSense"})
     }
 
