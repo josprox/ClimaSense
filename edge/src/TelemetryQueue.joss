@@ -1,0 +1,59 @@
+class TelemetryQueue {
+    func initialize(string $path) {
+        $db = new SQLite()
+        $opened = $db->open($path)
+        ($opened == false) ? { throw "No se pudo abrir la cola SQLite" } : {}
+        $db->query("PRAGMA journal_mode=WAL")
+        $db->query("PRAGMA synchronous=FULL")
+        $db->query("CREATE TABLE IF NOT EXISTS telemetry_queue (sequence INTEGER PRIMARY KEY, payload TEXT NOT NULL, created_at TEXT NOT NULL)")
+        $db->close()
+        return true
+    }
+
+    func nextSequence(string $path) {
+        $db = new SQLite()
+        $db->open($path)
+        $rows = $db->query("SELECT COALESCE(MAX(sequence), 0) + 1 AS next_sequence FROM telemetry_queue")
+        $db->close()
+        return $rows[0]["next_sequence"]
+    }
+
+    func enqueue(string $path, int $sequence, $payload, int $maximum) {
+        $db = new SQLite()
+        $db->open($path)
+        $db->query("INSERT OR IGNORE INTO telemetry_queue(sequence, payload, created_at) VALUES (?, ?, ?)", [$sequence, JSON::stringify($payload), System::now()])
+        $db->query("DELETE FROM telemetry_queue WHERE sequence IN (SELECT sequence FROM telemetry_queue ORDER BY sequence ASC LIMIT MAX((SELECT COUNT(*) FROM telemetry_queue) - ?, 0))", [$maximum])
+        $db->close()
+        return true
+    }
+
+    func pending(string $path, int $limit) {
+        $db = new SQLite()
+        $db->open($path)
+        $rows = $db->query("SELECT sequence, payload FROM telemetry_queue ORDER BY sequence ASC LIMIT ?", [$limit])
+        $db->close()
+
+        $result = []
+        foreach ($rows as $row) {
+            $payload = JSON::parse($row["payload"])
+            $result = append($result, {"sequence": $row["sequence"], "payload": $payload})
+        }
+        return $result
+    }
+
+    func acknowledge(string $path, int $through_sequence) {
+        $db = new SQLite()
+        $db->open($path)
+        $db->query("DELETE FROM telemetry_queue WHERE sequence <= ?", [$through_sequence])
+        $db->close()
+        return true
+    }
+
+    func count(string $path) {
+        $db = new SQLite()
+        $db->open($path)
+        $rows = $db->query("SELECT COUNT(*) AS pending FROM telemetry_queue")
+        $db->close()
+        return $rows[0]["pending"]
+    }
+}

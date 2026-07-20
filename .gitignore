@@ -1,0 +1,11 @@
+dist/
+output/
+*.img
+*.img.sha256
+env.joss
+env.enc
+.env
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+plugins/*/native/

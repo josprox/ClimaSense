@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>{{ $title }}</title>
+  <link rel="stylesheet" href="/public/css/saas.css">
+</head>
+<body class="auth-page">
+  <main class="auth-shell">
+    <section class="auth-story">
+      <a class="brand" href="/"><span class="brand-mark">C</span><span>ClimaSense <b>AI</b></span></a>
+      <div class="story-copy">
+        <span class="eyebrow">Environmental intelligence</span>
+        <h1>Cada espacio crítico, bajo control.</h1>
+        <p>Conecta tus ClimaSense Edge, compara el ambiente interior con el exterior y recibe recomendaciones accionables cada diez minutos.</p>
+        <div class="signal-card"><span class="live-dot"></span><div><strong>Monitoreo continuo</strong><small>Raspberry Pi Zero 2 W · BMP280 · WebSocket</small></div></div>
+      </div>
+    </section>
+    <section class="auth-panel">
+      <form id="login-form" class="auth-form">
+        <span class="eyebrow">Portal seguro</span>
+        <h2>Bienvenido de nuevo</h2>
+        <p>Accede como administrador o empresa.</p>
+        <label>Correo electrónico<input name="email" type="email" autocomplete="username" required placeholder="tu@empresa.com"></label>
+        <label>Contraseña<input name="password" type="password" autocomplete="current-password" required placeholder="••••••••"></label>
+        <button class="primary-button" type="submit">Entrar al panel <span>→</span></button>
+        <p id="form-message" class="form-message" role="status"></p>
+        <a class="setup-link" href="/setup">Configuración inicial del administrador</a>
+      </form>
+    </section>
+  </main>
+  <script src="/public/js/auth.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,45 @@
+class ClimaSenseTransport {
+    func ping() {
+        return Plugin::call("climasense_transport", "ping", [])
+    }
+
+    func send(string $base_url, string $path, string $device_id, string $token, int $sequence, $payload, int $timeout_seconds) {
+        return Plugin::call("climasense_transport", "send", [$base_url, $path, $device_id, $token, $sequence, $payload, $timeout_seconds])
+    }
+
+    func wsSend(string $base_url, string $path, string $device_id, string $token, int $sequence, $payload, int $timeout_seconds) {
+        return Plugin::call("climasense_transport", "ws_send", [$base_url, $path, $device_id, $token, $sequence, $payload, $timeout_seconds])
+    }
+
+    func activate(string $base_url, string $path, string $activation_code, string $hardware_id, string $name, int $timeout_seconds) {
+        return Plugin::call("climasense_transport", "activate", [$base_url, $path, $activation_code, $hardware_id, $name, $timeout_seconds])
+    }
+
+    func weatherCurrent(float $latitude, float $longitude, int $timeout_seconds) {
+        return Plugin::call("climasense_transport", "weather_current", [$latitude, $longitude, $timeout_seconds])
+    }
+
+    func sign(string $token, string $timestamp, int $sequence, string $nonce, $payload) {
+        return Plugin::call("climasense_transport", "sign", [$token, $timestamp, $sequence, $nonce, $payload])
+    }
+
+    func verify(string $token, string $timestamp, int $sequence, string $nonce, $payload, string $signature, int $max_clock_skew_seconds) {
+        return Plugin::call("climasense_transport", "verify", [$token, $timestamp, $sequence, $nonce, $payload, $signature, $max_clock_skew_seconds])
+    }
+
+    func verifyHash(string $token_hash, string $timestamp, int $sequence, string $nonce, $payload, string $signature, int $max_clock_skew_seconds) {
+        return Plugin::call("climasense_transport", "verify_hash", [$token_hash, $timestamp, $sequence, $nonce, $payload, $signature, $max_clock_skew_seconds])
+    }
+
+    func hashToken(string $token) {
+        return Plugin::call("climasense_transport", "hash_token", [$token])
+    }
+
+    func secureEqual(string $left, string $right) {
+        return Plugin::call("climasense_transport", "secure_equal", [$left, $right])
+    }
+
+    func randomToken(int $bytes) {
+        return Plugin::call("climasense_transport", "random_token", [$bytes])
+    }
+}

@@ -1,0 +1,33 @@
+class EdgeConfig {
+    func load(string $path) {
+        $content = file_get_contents($path)
+        empty($content) ? {
+            throw "No se pudo leer la configuracion Edge: " . $path
+        } : {}
+
+        $config = JSON::parse($content)
+        empty($config) ? {
+            throw "La configuracion Edge no contiene JSON valido"
+        } : {}
+
+        $device = $config["device"]
+        $sensor = $config["sensor"]
+        $server = $config["server"]
+        $storage = $config["storage"]
+        $device_id = $device["id"]
+        $token_file = $device["token_file"]
+        $base_url = $server["base_url"]
+        $websocket_path = $server["websocket_path"]
+        $database_path = $storage["database_path"]
+        empty($device_id) ? { throw "device.id es obligatorio" } : {}
+        empty($token_file) ? { throw "device.token_file es obligatorio" } : {}
+        empty($base_url) ? { throw "server.base_url es obligatorio" } : {}
+        empty($websocket_path) ? { throw "server.websocket_path es obligatorio" } : {}
+        empty($database_path) ? { throw "storage.database_path es obligatorio" } : {}
+        ($sensor["sample_interval_seconds"] > 0) ? {} : { throw "sensor.sample_interval_seconds debe ser mayor que cero" }
+        ($sensor["max_retries"] >= 1 && $sensor["max_retries"] <= 10) ? {} : { throw "sensor.max_retries debe estar entre 1 y 10" }
+        ($server["batch_size"] >= 1 && $server["batch_size"] <= 100) ? {} : { throw "server.batch_size debe estar entre 1 y 100" }
+        ($storage["max_offline_records"] > 0) ? {} : { throw "storage.max_offline_records debe ser mayor que cero" }
+        return $config
+    }
+}

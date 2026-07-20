@@ -1,0 +1,43 @@
+class SaaSAuthController {
+    func loginPage() {
+        (Auth::check() == true) ? { return Response::redirect("/") } : {}
+        return View::render("saas.login", {"title": "Acceso a ClimaSense"})
+    }
+
+    func setupPage() {
+        return View::render("saas.setup", {"title": "Configurar administrador"})
+    }
+
+    func login() {
+        $email = Request::input("email", "")
+        $password = Request::input("password", "")
+        (empty($email) || empty($password)) ? { return ApiResponse::error("Correo y contrasena son obligatorios", 422) } : {}
+        $token = Auth::attempt($email, $password)
+        ($token == false) ? { return ApiResponse::error("Credenciales invalidas", 401) } : {}
+        $destination = (Auth::hasRole("admin") == true) ? "/admin" : "/app"
+        return ApiResponse::json({"ok": true, "redirect": $destination}, 200)->withCookie("joss_token", $token)
+    }
+
+    func logout() {
+        Auth::logout()
+        return ApiResponse::json({"ok": true, "redirect": "/login"}, 200)->withCookie("joss_token", "")
+    }
+
+    func bootstrapAdmin() {
+        $provided = Request::input("bootstrap_key", "")
+        $expected = System::env("SAAS_BOOTSTRAP_KEY", System::env("APP_KEY", ""))
+        empty($expected) ? { return ApiResponse::error("Bootstrap deshabilitado", 503) } : {}
+        (ClimaSenseTransport::secureEqual($provided, $expected) == true) ? {} : { return ApiResponse::error("Clave de bootstrap invalida", 401) }
+        $existing = GranDB::table("users")->where("role_id", 1)->count()
+        ($existing == 0) ? {} : { return ApiResponse::error("Ya existe un administrador", 409) }
+
+        $email = Request::input("email", "")
+        $password = Request::input("password", "")
+        $name = Request::input("name", "Administrador")
+        (empty($email) || empty($password)) ? { return ApiResponse::error("Correo y contrasena son obligatorios", 422) } : {}
+        $created = Auth::create({"username": $email, "first_name": $name, "last_name": "", "email": $email, "password": $password, "phone": "", "role_id": 1})
+        ($created == false) ? { return ApiResponse::error("No se pudo crear el administrador", 409) } : {}
+        GranDB::table("users")->where("email", $email)->update({"verificado": 1, "updated_at": System::now()})
+        return ApiResponse::json({"ok": true, "message": "Administrador creado; ya puede iniciar sesion"}, 201)
+    }
+}

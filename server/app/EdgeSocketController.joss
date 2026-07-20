@@ -1,0 +1,27 @@
+class EdgeSocketController {
+    func connect($ws) {
+        $this->connection = $ws
+        $ws->onMessage($this->handleMessage)
+    }
+
+    func handleMessage($message) {
+        $connection = $this->connection
+        try {
+            $envelope = JSON::parse($message)
+            ($envelope["type"] == "telemetry_batch") ? {} : { throw "Tipo de mensaje no soportado" }
+            $device = DeviceAuth::verifyEnvelope($envelope)
+            $result = TelemetryController::storeBatchPayload($envelope["payload"], $device["device_id"])
+            $connection->send(JSON::stringify({
+                "ok": true,
+                "type": "ack",
+                "device_id": $device["device_id"],
+                "accepted": $result["accepted"],
+                "duplicates": $result["duplicates"],
+                "accepted_through": $result["accepted_through"]
+            }))
+        } catch ($error) {
+            $connection->send(JSON::stringify({"ok": false, "type": "error", "error": "Telemetria WebSocket rechazada"}))
+        }
+        $connection->close()
+    }
+}

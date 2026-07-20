@@ -1,0 +1,38 @@
+#!/bin/sh
+
+case "$1" in
+  start)
+    [ -s /data/climasense/device.token ] && [ -s /data/climasense/config.json ] && exit 0
+    code=""
+    if [ -s /data/climasense/activation.code ]; then
+      IFS= read -r code < /data/climasense/activation.code
+    elif [ -c /dev/tty1 ]; then
+      exec 3<>/dev/tty1
+      printf '\nWi-Fi configurado. Conectando con ClimaSense SaaS...\n' >&3
+      attempts=0
+      while [ "$attempts" -lt 30 ]; do
+        ip route 2>/dev/null | grep -q '^default' && break
+        sleep 1
+        attempts=$((attempts + 1))
+      done
+      printf 'Numero de activacion entregado por su empresa: ' >&3
+      IFS= read -r code <&3
+    fi
+    [ -n "$code" ] || { echo "ClimaSense: falta el numero de activacion"; exit 1; }
+    hardware_id="$(sed -n 's/^Serial[[:space:]]*:[[:space:]]*//p' /proc/cpuinfo | tail -n 1)"
+    [ -n "$hardware_id" ] || hardware_id="$(cat /etc/machine-id 2>/dev/null || hostname)"
+    export CLIMASENSE_ACTIVATION_CODE="$code"
+    export CLIMASENSE_HARDWARE_ID="$hardware_id"
+    export CLIMASENSE_DEVICE_NAME="ClimaSense Edge"
+    cd /opt/climasense/edge || exit 1
+    if su climasense -s /bin/sh -c '/usr/bin/joss run activate.joss'; then
+      rm -f /data/climasense/activation.code
+      chmod 0600 /data/climasense/device.token
+      chmod 0640 /data/climasense/config.json
+      echo "ClimaSense: activacion completada"
+    else
+      echo "ClimaSense: la activacion fallo; el codigo se conserva para reintentar"
+      exit 1
+    fi
+    ;;
+esac

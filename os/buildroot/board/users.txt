@@ -1,0 +1,1 @@
+climasense 1000 climasense 1000 * /data/climasense /bin/false i2c ClimaSense service account

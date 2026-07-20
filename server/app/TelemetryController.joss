@@ -1,0 +1,87 @@
+class TelemetryController {
+    func validateMeasurement($measurement, string $device_id) {
+        ($measurement["device_id"] == $device_id) ? {} : { throw "device_id no coincide" }
+        ($measurement["schema_version"] == 1) ? {} : { throw "schema_version no soportada" }
+        ($measurement["sensor_type"] == "bmp280") ? {} : { throw "sensor_type no soportado" }
+        ($measurement["sequence"] > 0) ? {} : { throw "sequence invalida" }
+        ($measurement["temperature_c"] >= -40 && $measurement["temperature_c"] <= 85) ? {} : { throw "temperatura fuera de rango" }
+        ($measurement["pressure_pa"] >= 30000 && $measurement["pressure_pa"] <= 110000) ? {} : { throw "presion fuera de rango" }
+        return true
+    }
+
+    func store($measurement, string $device_id) {
+        TelemetryController::validateMeasurement($measurement, $device_id)
+        $existing = GranDB::table("telemetry_measurements")->where("device_id", $device_id)->where("sequence", $measurement["sequence"])->exists()
+        ($existing == true) ? { return false } : {}
+        GranDB::table("telemetry_measurements")->insert({
+            "device_id": $device_id,
+            "sequence": $measurement["sequence"],
+            "measured_at": $measurement["measured_at"],
+            "received_at": System::now(),
+            "temperature_c": $measurement["temperature_c"],
+            "pressure_pa": $measurement["pressure_pa"],
+            "pressure_hpa": $measurement["pressure_hpa"],
+            "sensor_type": $measurement["sensor_type"],
+            "sensor_address": $measurement["sensor_address"],
+            "sensor_status": $measurement["sensor_status"],
+            "firmware_version": $measurement["firmware_version"],
+            "runtime_version": $measurement["runtime_version"]
+        })
+        return true
+    }
+
+    func single() {
+        $payload = Request::all()
+        try {
+            $device = DeviceAuth::verify($payload)
+            $inserted = TelemetryController::store($payload, $device["device_id"])
+            return Response::json({"accepted": ($inserted == true) ? 1 : 0, "duplicate": ($inserted == false)})
+        } catch ($error) {
+            return ApiResponse::error("Telemetria rechazada", 400)
+        }
+    }
+
+    func batch() {
+        $payload = Request::all()
+        try {
+            $device = DeviceAuth::verify($payload)
+            return Response::json(TelemetryController::storeBatchPayload($payload, $device["device_id"]))
+        } catch ($error) {
+            return ApiResponse::error("Lote de telemetria rechazado", 400)
+        }
+    }
+
+    func storeBatchPayload($payload, string $device_id) {
+        $measurements = $payload["measurements"]
+        (count($measurements) > 0 && count($measurements) <= 100) ? {} : { throw "Tamano de lote invalido" }
+        $accepted = 0
+        $duplicates = 0
+        $through = 0
+        foreach ($measurements as $measurement) {
+            $inserted = TelemetryController::store($measurement, $device_id)
+            ($inserted == true) ? { $accepted = $accepted + 1 } : { $duplicates = $duplicates + 1 }
+            $through = $measurement["sequence"]
+        }
+        GranDB::table("devices")->where("device_id", $device_id)->update({"last_seen_at": System::now(), "updated_at": System::now()})
+        return {"ok": true, "type": "ack", "accepted": $accepted, "duplicates": $duplicates, "accepted_through": $through}
+    }
+
+    func latest($device_id) {
+        try { OperatorAuth::verify() } catch ($error) { return ApiResponse::error("Acceso operador rechazado", 401) }
+        $row = GranDB::table("telemetry_measurements")->where("device_id", $device_id)->latest("measured_at")->first()
+        empty($row) ? { return ApiResponse::error("Sin mediciones", 404) } : {}
+        return Response::json($row)
+    }
+
+    func measurements($device_id) {
+        try { OperatorAuth::verify() } catch ($error) { return ApiResponse::error("Acceso operador rechazado", 401) }
+        int $limit = Request::input("limit", 100)
+        ($limit > 0 && $limit <= 1000) ? {} : { $limit = 100 }
+        $query = GranDB::table("telemetry_measurements")->where("device_id", $device_id)
+        $from = Request::input("from", "")
+        $to = Request::input("to", "")
+        empty($from) ? {} : { $query = $query->where("measured_at", ">=", $from) }
+        empty($to) ? {} : { $query = $query->where("measured_at", "<=", $to) }
+        return Response::json({"data": $query->latest("measured_at")->limit($limit)->get(), "limit": $limit})
+    }
+}

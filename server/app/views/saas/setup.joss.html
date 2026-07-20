@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="es">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{{ $title }}</title><link rel="stylesheet" href="/public/css/saas.css"></head>
+<body class="auth-page compact-auth">
+  <main class="setup-card">
+    <a class="brand" href="/"><span class="brand-mark">C</span><span>ClimaSense <b>AI</b></span></a>
+    <span class="eyebrow">Primera ejecución</span>
+    <h1>Crear administrador SaaS</h1>
+    <p>Este formulario solo funciona mientras no exista un administrador y requiere la clave <code>SAAS_BOOTSTRAP_KEY</code>.</p>
+    <form id="setup-form" class="auth-form grid-form">
+      <label>Nombre<input name="name" required value="Administrador"></label>
+      <label>Correo<input name="email" type="email" required></label>
+      <label>Contraseña<input name="password" type="password" minlength="10" required></label>
+      <label>Clave de bootstrap<input name="bootstrap_key" type="password" required></label>
+      <button class="primary-button full" type="submit">Crear administrador</button>
+      <p id="form-message" class="form-message full" role="status"></p>
+    </form>
+  </main>
+  <script src="/public/js/auth.js" defer></script>
+</body>
+</html>

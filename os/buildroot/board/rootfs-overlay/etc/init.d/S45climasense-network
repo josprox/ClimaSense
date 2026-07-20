@@ -1,0 +1,20 @@
+#!/bin/sh
+
+case "$1" in
+  start)
+    if [ -s /data/climasense/wpa_supplicant.conf ]; then
+      install -m 0600 /data/climasense/wpa_supplicant.conf /etc/wpa_supplicant.conf
+      wpa_supplicant -B -i wlan0 -c /etc/wpa_supplicant.conf
+      udhcpc -i wlan0 -b -q
+    else
+      echo "ClimaSense: configure /data/climasense/wpa_supplicant.conf"
+    fi
+    ;;
+  stop)
+    killall wpa_supplicant 2>/dev/null || true
+    ;;
+  restart)
+    "$0" stop
+    "$0" start
+    ;;
+esac

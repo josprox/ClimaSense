@@ -1,0 +1,15 @@
+class HealthController {
+    func health() {
+        return Response::json({"status": "ok", "service": "climasense-server", "version": "0.2.0"})
+    }
+
+    func ready() {
+        try {
+            $devices = GranDB::table("devices")->count()
+            $measurements = GranDB::table("telemetry_measurements")->count()
+            return ApiResponse::json({"status": "ready", "devices": $devices, "measurements": $measurements}, 200)
+        } catch ($error) {
+            return ApiResponse::error("database not ready", 503)
+        }
+    }
+}

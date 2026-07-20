@@ -1,0 +1,10 @@
+$db = new SQLite()
+$db->open("tests/server-test.sqlite")
+$tables = $db->query("SELECT name FROM sqlite_master WHERE type = 'table' AND name LIKE 'cs_%' ORDER BY name")
+$indexes = $db->query("SELECT name FROM sqlite_master WHERE type = 'index' AND name LIKE 'cs_%' ORDER BY name")
+$db->close()
+
+print(JSON::stringify({"tables": $tables, "indexes": $indexes}))
+(count($tables) >= 8) ? {} : { throw "Faltan tablas de ClimaSense" }
+(count($indexes) >= 8) ? {} : { throw "Faltan indices de ClimaSense" }
+print("server-schema-ok")

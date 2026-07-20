@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#07111f">
+    <title>{{ $title }}</title>
+    <link rel="stylesheet" href="/public/css/app.css">
+    <script src="/public/js/dashboard.js" defer></script>
+</head>
+<body>
+    <div class="ambient ambient-one"></div>
+    <div class="ambient ambient-two"></div>
+
+    <div class="app-shell">
+        <aside class="sidebar">
+            <a class="brand" href="/" aria-label="ClimaSense inicio">
+                <span class="brand-mark">
+                    <svg viewBox="0 0 48 48" aria-hidden="true"><path d="M24 5c7 8 13 14 13 23a13 13 0 1 1-26 0C11 19 17 13 24 5Z"/><path d="M17 30c2.2 3 5 4.4 8.4 4.1"/></svg>
+                </span>
+                <span><strong>ClimaSense</strong><small>Control Center</small></span>
+            </a>
+
+            <nav class="nav-list" aria-label="Navegación principal">
+                <a class="nav-item active" href="#overview"><span>◫</span>Resumen</a>
+                <a class="nav-item" href="#telemetry"><span>⌁</span>Telemetría</a>
+                <a class="nav-item" href="#devices"><span>◇</span>Dispositivos</a>
+                <a class="nav-item" href="#system"><span>○</span>Sistema</a>
+            </nav>
+
+            <div class="sidebar-status">
+                <span class="pulse-dot"></span>
+                <div><strong>Servidor operativo</strong><small>HTTP · puerto 8080</small></div>
+            </div>
+            <p class="sidebar-version">ClimaSense OS · v{{ $version }}</p>
+        </aside>
+
+        <main class="main-content">
+            <header class="topbar">
+                <div>
+                    <p class="eyebrow">MONITOREO AMBIENTAL</p>
+                    <h1>Visión general</h1>
+                    <p class="subtitle">Estado de la red Edge y lecturas del entorno en tiempo real.</p>
+                </div>
+                <div class="topbar-actions">
+                    <div class="last-update"><span>Última actualización</span><strong id="last-update">Conectando…</strong></div>
+                    <button class="refresh-button" id="refresh-button" type="button" aria-label="Actualizar datos">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 5v6h-6"/></svg>
+                        Actualizar
+                    </button>
+                </div>
+            </header>
+
+            <section class="system-banner" id="system">
+                <div class="system-copy">
+                    <span class="status-orb" id="status-orb"></span>
+                    <div><strong id="system-title">Conectando con ClimaSense</strong><p id="system-detail">Consultando el estado del servicio…</p></div>
+                </div>
+                <div class="system-pills">
+                    <span class="pill"><i></i>API <b>online</b></span>
+                    <span class="pill warning"><i></i>Transporte <b>HTTP</b></span>
+                    <span class="pill" id="database-pill"><i></i>Base de datos <b>verificando</b></span>
+                </div>
+            </section>
+
+            <section class="metric-grid" id="overview" aria-label="Métricas principales">
+                <article class="metric-card accent-cyan">
+                    <div class="metric-icon">◇</div><span class="metric-label">Dispositivos</span>
+                    <strong class="metric-value" id="metric-devices">—</strong><small id="metric-active">— activos</small>
+                </article>
+                <article class="metric-card accent-violet">
+                    <div class="metric-icon">⌁</div><span class="metric-label">Mediciones</span>
+                    <strong class="metric-value" id="metric-measurements">—</strong><small>registros recibidos</small>
+                </article>
+                <article class="metric-card accent-green">
+                    <div class="metric-icon">♡</div><span class="metric-label">Heartbeats</span>
+                    <strong class="metric-value" id="metric-heartbeats">—</strong><small>señales de vida</small>
+                </article>
+                <article class="metric-card accent-amber">
+                    <div class="metric-icon">◎</div><span class="metric-label">Eventos</span>
+                    <strong class="metric-value" id="metric-events">—</strong><small>eventos de protocolo</small>
+                </article>
+            </section>
+
+            <section class="content-grid" id="telemetry">
+                <article class="panel chart-panel">
+                    <div class="panel-heading">
+                        <div><p class="eyebrow">SERIE RECIENTE</p><h2>Temperatura y presión</h2></div>
+                        <div class="chart-legend"><span><i class="temp"></i>°C</span><span><i class="pressure"></i>hPa</span></div>
+                    </div>
+                    <div class="chart-wrap">
+                        <canvas id="telemetry-chart" aria-label="Gráfico de temperatura y presión"></canvas>
+                        <div class="empty-state" id="chart-empty"><strong>Esperando telemetría</strong><span>Las primeras lecturas aparecerán aquí.</span></div>
+                    </div>
+                </article>
+
+                <article class="panel latest-panel">
+                    <div class="panel-heading"><div><p class="eyebrow">ÚLTIMA LECTURA</p><h2>Condiciones actuales</h2></div><span class="live-badge">LIVE</span></div>
+                    <div class="latest-reading">
+                        <div><span>Temperatura</span><strong id="latest-temperature">—</strong><small>grados Celsius</small></div>
+                        <div><span>Presión</span><strong id="latest-pressure">—</strong><small>hectopascales</small></div>
+                    </div>
+                    <dl class="reading-meta">
+                        <div><dt>Dispositivo</dt><dd id="latest-device">Sin datos</dd></div>
+                        <div><dt>Sensor</dt><dd id="latest-sensor">BMP280</dd></div>
+                        <div><dt>Medición</dt><dd id="latest-time">—</dd></div>
+                    </dl>
+                </article>
+            </section>
+
+            <section class="panel devices-panel" id="devices">
+                <div class="panel-heading">
+                    <div><p class="eyebrow">FLOTA EDGE</p><h2>Dispositivos recientes</h2></div>
+                    <span class="table-caption" id="device-caption">0 dispositivos registrados</span>
+                </div>
+                <div class="table-wrap">
+                    <table>
+                        <thead><tr><th>Dispositivo</th><th>Ubicación</th><th>Estado</th><th>Último contacto</th></tr></thead>
+                        <tbody id="devices-body"><tr><td colspan="4" class="loading-row">Cargando dispositivos…</td></tr></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <footer>
+                <span>ClimaSense Control Center</span>
+                <span>Joss Server · actualización automática cada 10 s</span>
+            </footer>
+        </main>
+    </div>
+</body>
+</html>

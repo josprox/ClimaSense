@@ -1,0 +1,92 @@
+class EdgeService {
+    func measurement($config, int $sequence) {
+        $device = $config["device"]
+        $sensor = $config["sensor"]
+        $sensor_config = {
+            "temperature_oversampling": $sensor["temperature_oversampling"],
+            "pressure_oversampling": $sensor["pressure_oversampling"],
+            "filter": $sensor["filter"],
+            "timeout_ms": $sensor["timeout_ms"]
+        }
+        $reading = nil
+        $attempt = 0
+        $last_error = "BMP280 no disponible"
+        while ($attempt < $sensor["max_retries"] && empty($reading)) {
+            try {
+                $reading = ClimaSenseHardware::bmp280Read($sensor["bus"], $sensor["address"], $sensor_config)
+            } catch ($error) {
+                $last_error = $error
+                $attempt = $attempt + 1
+            }
+        }
+        empty($reading) ? { throw "Lectura BMP280 agotada tras reintentos: " . $last_error } : {}
+        return {
+            "schema_version": 1,
+            "device_id": $device["id"],
+            "sequence": $sequence,
+            "measured_at": $reading["measured_at"],
+            "temperature_c": $reading["temperature_c"],
+            "pressure_pa": $reading["pressure_pa"],
+            "pressure_hpa": $reading["pressure_hpa"],
+            "sensor_type": "bmp280",
+            "sensor_address": $reading["sensor_address"],
+            "sensor_status": $reading["sensor_status"],
+            "firmware_version": $device["firmware_version"],
+            "runtime_version": JOSS_VERSION
+        }
+    }
+
+    func synchronize($config) {
+        $device = $config["device"]
+        $server = $config["server"]
+        $storage = $config["storage"]
+        $path = $storage["database_path"]
+        $rows = TelemetryQueue::pending($path, $server["batch_size"])
+        (count($rows) == 0) ? { return {"ok": true, "sent": 0} } : {}
+
+        $batch = []
+        $last_sequence = 0
+        foreach ($rows as $row) {
+            $batch = append($batch, $row["payload"])
+            $last_sequence = $row["sequence"]
+        }
+
+        $token = Str::trim(file_get_contents($device["token_file"]))
+        empty($token) ? { throw "El token del dispositivo no esta disponible" } : {}
+        $response = ClimaSenseTransport::wsSend($server["base_url"], $server["websocket_path"], $device["id"], $token, $last_sequence, {"schema_version": 1, "measurements": $batch}, $server["timeout_seconds"])
+        ($response["ok"] == true) ? {
+            TelemetryQueue::acknowledge($path, $last_sequence)
+            return {"ok": true, "sent": count($batch)}
+        } : {
+            return {"ok": false, "sent": 0, "status": "websocket_rejected"}
+        }
+    }
+
+    func run($config) {
+        $sensor = $config["sensor"]
+        $storage = $config["storage"]
+        $path = $storage["database_path"]
+        TelemetryQueue::initialize($path)
+        System::log("ClimaSense Edge iniciado; cola pendiente=" . TelemetryQueue::count($path))
+
+        while (true) {
+            try {
+                $sequence = TelemetryQueue::nextSequence($path)
+                $payload = EdgeService::measurement($config, $sequence)
+                TelemetryQueue::enqueue($path, $sequence, $payload, $storage["max_offline_records"])
+                System::log("Medicion almacenada: secuencia=" . $sequence)
+            } catch ($sensor_error) {
+                System::log("Sensor degradado: " . $sensor_error)
+            }
+
+            try {
+                $sync = EdgeService::synchronize($config)
+                System::log("Sincronizacion: " . JSON::stringify($sync))
+            } catch ($network_error) {
+                System::log("Sin red o servidor no disponible; la cola se conserva")
+            }
+
+            System::sleep($sensor["sample_interval_seconds"])
+        }
+    }
+}

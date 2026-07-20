@@ -1,0 +1,7 @@
+import "src/Config.joss"
+import "src/TelemetryQueue.joss"
+import "src/EdgeService.joss"
+
+$config_path = System::env("CLIMASENSE_CONFIG", "/data/climasense/config.json")
+$config = EdgeConfig::load($config_path)
+EdgeService::run($config)

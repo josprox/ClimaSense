@@ -1,0 +1,23 @@
+#!/bin/sh
+
+case "$1" in
+  start)
+    [ -s /data/climasense/wpa_supplicant.conf ] && exit 0
+    tty=/dev/tty1
+    [ -c "$tty" ] || { echo "ClimaSense: no hay consola para configurar Wi-Fi"; exit 0; }
+    exec 3<>"$tty"
+    printf '\n=== ClimaSense AI · Configuracion inicial ===\n' >&3
+    printf 'Nombre de la red Wi-Fi (SSID): ' >&3
+    IFS= read -r ssid <&3
+    printf 'Contrasena Wi-Fi: ' >&3
+    stty -echo <"$tty"
+    IFS= read -r password <&3
+    stty echo <"$tty"
+    printf '\nGuardando red de forma segura...\n' >&3
+    umask 077
+    wpa_passphrase "$ssid" "$password" | sed '/^[[:space:]]*#psk=/d' > /data/climasense/wpa_supplicant.conf
+    chown 1000:1000 /data/climasense/wpa_supplicant.conf
+    chmod 0600 /data/climasense/wpa_supplicant.conf
+    unset password
+    ;;
+esac

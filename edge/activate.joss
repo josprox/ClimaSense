@@ -1,0 +1,28 @@
+$config_path = System::env("CLIMASENSE_CONFIG_TEMPLATE", "/data/climasense/config.example.json")
+$output_path = System::env("CLIMASENSE_CONFIG", "/data/climasense/config.json")
+$token_path = System::env("CLIMASENSE_TOKEN_FILE", "/data/climasense/device.token")
+$activation_code = System::env("CLIMASENSE_ACTIVATION_CODE", "")
+$hardware_id = System::env("CLIMASENSE_HARDWARE_ID", "")
+$device_name = System::env("CLIMASENSE_DEVICE_NAME", "ClimaSense Edge")
+empty($activation_code) ? { throw "Falta CLIMASENSE_ACTIVATION_CODE" } : {}
+empty($hardware_id) ? { throw "Falta CLIMASENSE_HARDWARE_ID" } : {}
+$config = JSON::parse(file_get_contents($config_path))
+$server = $config["server"]
+$response = ClimaSenseTransport::activate($server["base_url"], $server["activation_path"], $activation_code, $hardware_id, $device_name, $server["timeout_seconds"])
+($response["ok"] == true) ? {} : { throw "El servidor rechazo la activacion" }
+$activated = {
+    "device": {
+        "id": $response["device_id"],
+        "hardware_id": $hardware_id,
+        "name": $device_name,
+        "location": "",
+        "token_file": $token_path,
+        "firmware_version": "0.2.0"
+    },
+    "sensor": $config["sensor"],
+    "server": $server,
+    "storage": $config["storage"]
+}
+file_put_contents($token_path, $response["device_token"])
+file_put_contents($output_path, JSON::stringify($activated))
+print("climasense-activation-ok")

@@ -1,0 +1,52 @@
+class DeviceAuth {
+    func verifyEnvelope($envelope) {
+        $device_id = $envelope["device_id"]
+        $timestamp = $envelope["timestamp"]
+        int $sequence = $envelope["sequence"]
+        $nonce = $envelope["nonce"]
+        $signature = $envelope["signature"]
+        $payload = $envelope["payload"]
+        empty($device_id) ? { throw "Falta device_id" } : {}
+        empty($timestamp) ? { throw "Falta timestamp" } : {}
+        empty($nonce) ? { throw "Falta nonce" } : {}
+        empty($signature) ? { throw "Falta signature" } : {}
+        empty($payload) ? { throw "Falta payload" } : {}
+
+        $device = GranDB::table("devices")->where("device_id", $device_id)->where("status", "active")->first()
+        empty($device) ? { throw "Dispositivo desconocido o revocado" } : {}
+        $credential = GranDB::table("device_credentials")->where("device_id", $device_id)->where("revoked", false)->first()
+        empty($credential) ? { throw "Credencial no disponible" } : {}
+        $verification = ClimaSenseTransport::verifyHash($credential["token_hash"], $timestamp, $sequence, $nonce, $payload, $signature, 300)
+        ($verification["valid"] == true) ? {} : { throw "Firma o timestamp invalido" }
+        $replay = GranDB::table("security_events")->where("device_id", $device_id)->where("nonce", $nonce)->exists()
+        ($replay == true) ? { throw "Nonce reutilizado" } : {}
+        GranDB::table("security_events")->insert({"device_id": $device_id, "event_type": "accepted_ws_nonce", "nonce": $nonce, "occurred_at": System::now()})
+        return $device
+    }
+
+    func verify($payload) {
+        $device_id = Request::header("X-Device-Id")
+        $timestamp = Request::header("X-Timestamp")
+        int $sequence = Request::header("X-Sequence")
+        $nonce = Request::header("X-Nonce")
+        $signature = Request::header("X-Signature")
+
+        empty($device_id) ? { throw "Falta X-Device-ID" } : {}
+        empty($timestamp) ? { throw "Falta X-Timestamp" } : {}
+        empty($nonce) ? { throw "Falta X-Nonce" } : {}
+        empty($signature) ? { throw "Falta X-Signature" } : {}
+
+        $device = GranDB::table("devices")->where("device_id", $device_id)->where("status", "active")->first()
+        empty($device) ? { throw "Dispositivo desconocido o revocado" } : {}
+        $credential = GranDB::table("device_credentials")->where("device_id", $device_id)->where("revoked", false)->first()
+        empty($credential) ? { throw "Credencial no disponible" } : {}
+
+        $verification = ClimaSenseTransport::verifyHash($credential["token_hash"], $timestamp, $sequence, $nonce, $payload, $signature, 300)
+        ($verification["valid"] == true) ? {} : { throw "Firma o timestamp invalido" }
+
+        $replay = GranDB::table("security_events")->where("device_id", $device_id)->where("nonce", $nonce)->exists()
+        ($replay == true) ? { throw "Nonce reutilizado" } : {}
+        GranDB::table("security_events")->insert({"device_id": $device_id, "event_type": "accepted_nonce", "nonce": $nonce, "occurred_at": System::now()})
+        return $device
+    }
+}

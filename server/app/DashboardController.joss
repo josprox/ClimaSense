@@ -1,0 +1,59 @@
+class DashboardController {
+    func index() {
+        (Auth::check() == true) ? {} : { return Response::redirect("/login") }
+        (Auth::hasRole("admin") == true) ? { return Response::redirect("/admin") } : { return Response::redirect("/app") }
+    }
+
+    func emptySummary(string $detail) {
+        return {
+            "service": "climasense-server",
+            "version": "0.2.0",
+            "transport": "HTTP",
+            "database_ready": false,
+            "detail": $detail,
+            "generated_at": System::now(),
+            "metrics": {
+                "devices": 0,
+                "active_devices": 0,
+                "measurements": 0,
+                "heartbeats": 0,
+                "security_events": 0
+            },
+            "recent_devices": [],
+            "recent_measurements": []
+        }
+    }
+
+    func summary() {
+        try { SaaSAuth::requireAdmin() } catch ($error) { return ApiResponse::error("Acceso administrador requerido", 401) }
+        try {
+            $device_count = GranDB::table("devices")->count()
+            $active_count = GranDB::table("devices")->where("status", "active")->count()
+            $measurement_count = GranDB::table("telemetry_measurements")->count()
+            $heartbeat_count = GranDB::table("device_heartbeats")->count()
+            $event_count = GranDB::table("security_events")->count()
+            $devices = GranDB::table("devices")->latest("updated_at")->limit(8)->get()
+            $measurements = GranDB::table("telemetry_measurements")->latest("measured_at")->limit(30)->get()
+
+            return ApiResponse::json({
+                "service": "climasense-server",
+                "version": "0.2.0",
+                "transport": "HTTP",
+                "database_ready": true,
+                "detail": "Base de datos conectada",
+                "generated_at": System::now(),
+                "metrics": {
+                    "devices": $device_count,
+                    "active_devices": $active_count,
+                    "measurements": $measurement_count,
+                    "heartbeats": $heartbeat_count,
+                    "security_events": $event_count
+                },
+                "recent_devices": $devices,
+                "recent_measurements": $measurements
+            }, 200)
+        } catch ($error) {
+            return ApiResponse::json(DashboardController::emptySummary("Base de datos no disponible o esquema incompleto"), 200)
+        }
+    }
+}

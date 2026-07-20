@@ -1,0 +1,14 @@
+name: climasense_transport
+version: 0.2.0
+description: HTTP, WebSocket y criptografia de protocolo para ClimaSense AI
+license: MIT
+type: joss
+environment:
+  joss: ">=3.6.0"
+entry:
+  main: src/plugin.joss
+native:
+  protocol: joss-rpc-v1
+  linux-arm64: native/linux-arm64/climasense-transport
+  linux-amd64: native/linux-amd64/climasense-transport
+  windows-amd64: native/windows-amd64/climasense-transport.exe

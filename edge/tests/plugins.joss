@@ -1,0 +1,7 @@
+$hardware = ClimaSenseHardware::ping()
+$transport = ClimaSenseTransport::ping()
+($hardware["ok"] == true) ? {} : { throw "Plugin de hardware no respondio" }
+($transport["ok"] == true) ? {} : { throw "Plugin de transporte no respondio" }
+(ClimaSenseTransport::secureEqual("same", "same") == true) ? {} : { throw "Comparacion constante fallo" }
+(ClimaSenseTransport::secureEqual("left", "right") == false) ? {} : { throw "Comparacion constante acepto valores distintos" }
+print("edge-plugins-ok")
