@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Configuración ClimaSense Edge</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card-bg: #1e293b;
+      --border: rgba(255,255,255,0.1);
+      --primary: #10b981;
+      --primary-hover: #059669;
+      --accent: #38bdf8;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+    body { background: var(--bg); color: var(--text); display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 16px; }
+    .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 16px; max-width: 480px; width: 100%; padding: 24px; box-shadow: 0 20px 40px rgba(0,0,0,0.5); }
+    .header { text-align: center; margin-bottom: 24px; }
+    .brand { display: inline-flex; align-items: center; gap: 8px; font-weight: bold; font-size: 20px; color: #fff; margin-bottom: 8px; }
+    .brand-mark { background: linear-gradient(135deg, #10b981, #38bdf8); color: #0f172a; width: 32px; height: 32px; border-radius: 8px; display: grid; place-items: center; font-weight: 900; }
+    .eyebrow { text-transform: uppercase; font-size: 11px; letter-spacing: 1.5px; color: var(--accent); font-weight: 700; display: block; margin-bottom: 4px; }
+    h1 { font-size: 22px; font-weight: 700; }
+    .subtitle { color: var(--text-muted); font-size: 14px; margin-top: 4px; }
+    
+    .steps-nav { display: flex; gap: 8px; margin-bottom: 24px; }
+    .step-pill { flex: 1; height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; transition: background 0.3s; }
+    .step-pill.active { background: var(--primary); }
+
+    .step-content { display: none; }
+    .step-content.active { display: block; }
+
+    label { display: block; font-size: 13px; color: var(--text-muted); margin-bottom: 6px; font-weight: 600; }
+    input, select { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border); background: #0f172a; color: #fff; font-size: 15px; margin-bottom: 16px; outline: none; }
+    input:focus, select:focus { border-color: var(--primary); }
+
+    .wifi-list { max-height: 200px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 16px; background: #0f172a; }
+    .wifi-item { padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+    .wifi-item:hover, .wifi-item.selected { background: rgba(16,185,129,0.15); }
+    .wifi-item strong { font-size: 14px; }
+    .wifi-signal { font-size: 12px; color: var(--primary); }
+
+    .btn { width: 100%; padding: 14px; background: var(--primary); color: #0f172a; font-weight: 700; font-size: 15px; border: none; border-radius: 8px; cursor: pointer; transition: background 0.2s; }
+    .btn:hover { background: var(--primary-hover); }
+    .btn-ghost { background: transparent; color: var(--text-muted); border: 1px solid var(--border); margin-top: 8px; }
+    
+    .status-box { padding: 12px; border-radius: 8px; background: rgba(56,189,248,0.1); border: 1px solid rgba(56,189,248,0.2); color: var(--accent); font-size: 13px; margin-bottom: 16px; display: none; }
+    .error-box { background: rgba(239,68,68,0.1); border-color: rgba(239,68,68,0.2); color: #ef4444; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="header">
+      <div class="brand"><span class="brand-mark">C</span>ClimaSense Edge</div>
+      <span class="eyebrow">Asistente de Primer Arranque</span>
+      <h1>Configuración Raspberry Pi</h1>
+      <p class="subtitle">Conecta tu dispositivo a internet e ingresa tu código de activación.</p>
+    </div>
+
+    <div class="steps-nav">
+      <div class="step-pill active" id="pill-1"></div>
+      <div class="step-pill" id="pill-2"></div>
+      <div class="step-pill" id="pill-3"></div>
+    </div>
+
+    <div id="status-msg" class="status-box"></div>
+
+    <!-- PASO 1: Selección de Red Wi-Fi -->
+    <div class="step-content active" id="step-1">
+      <label>1. Selecciona tu red Wi-Fi</label>
+      <div class="wifi-list" id="wifi-networks">
+        <div class="wifi-item" style="justify-content:center; color:var(--text-muted);">Escaneando redes cercanas...</div>
+      </div>
+      <button type="button" class="btn btn-ghost" id="scan-wifi-btn" style="margin-bottom:16px;">🔄 Volver a escanear</button>
+
+      <label>SSID de la Red<input id="wifi-ssid" placeholder="Nombre de tu Wi-Fi"></label>
+      <label>Contraseña Wi-Fi<input id="wifi-pass" type="password" placeholder="••••••••"></label>
+
+      <button type="button" class="btn" id="connect-wifi-btn">Conectar a la Red <span>→</span></button>
+    </div>
+
+    <!-- PASO 2: Código de Activación del Producto -->
+    <div class="step-content" id="step-2">
+      <label>2. Código de Activación de Producto</label>
+      <p style="font-size:13px; color:var(--text-muted); margin-bottom:16px;">Ingresa el código que generaste desde tu portal de cliente en ClimaSense AI.</p>
+      <label>Código de Conexión<input id="activation-code" placeholder="Ej. CS-A1B2-C3D4-E5F6" style="text-transform:uppercase; font-weight:bold; letter-spacing:1px;"></label>
+      <label>Servidor ClimaSense<input id="server-url" value="{{ $server_url }}"></label>
+
+      <button type="button" class="btn" id="activate-btn">Vincular Dispositivo <span>→</span></button>
+      <button type="button" class="btn btn-ghost" id="back-step-1">← Cambiar Wi-Fi</button>
+    </div>
+
+    <!-- PASO 3: Red Local de Mantenimiento (Hotspot Fallback) -->
+    <div class="step-content" id="step-3">
+      <label>3. Punto de Acceso Local de Mantenimiento</label>
+      <p style="font-size:13px; color:var(--text-muted); margin-bottom:16px;">Configura un punto de acceso privado local para conectarte al Raspberry Pi si cambia tu Wi-Fi en el futuro.</p>
+      <label>Nombre de Red Local (SSID)<input id="ap-ssid" value="Configuración ClimaSense"></label>
+      <label>Contraseña de Red Local<input id="ap-pass" type="password" value="climasense123" placeholder="Mínimo 8 caracteres"></label>
+
+      <button type="button" class="btn" id="finish-btn">Guardar y Finalizar 🚀</button>
+    </div>
+  </div>
+
+  <script>
+    (() => {
+      let currentStep = 1;
+      const $ = id => document.getElementById(id);
+
+      const showStatus = (msg, isError = false) => {
+        const box = $("status-msg");
+        box.textContent = msg;
+        box.className = "status-box " + (isError ? "error-box" : "");
+        box.style.display = "block";
+      };
+
+      const setStep = step => {
+        currentStep = step;
+        [1,2,3].forEach(s => {
+          $("step-" + s).className = "step-content " + (s === step ? "active" : "");
+          $("pill-" + s).className = "step-pill " + (s <= step ? "active" : "");
+        });
+      };
+
+      const scanWifi = async () => {
+        const list = $("wifi-networks");
+        list.innerHTML = '<div class="wifi-item" style="justify-content:center; color:var(--text-muted);">Escaneando redes cercanas...</div>';
+        try {
+          const res = await fetch("/api/wifi/scan");
+          const data = await res.json();
+          const networks = data.networks || [];
+          if (!networks.length) {
+            list.innerHTML = '<div class="wifi-item" style="justify-content:center; color:var(--text-muted);">No se encontraron redes Wi-Fi</div>';
+            return;
+          }
+          list.innerHTML = networks.map(n => `
+            <div class="wifi-item" data-ssid="${n.ssid}">
+              <strong>${n.ssid}</strong>
+              <span class="wifi-signal">${n.signal || 'Fuerte'}</span>
+            </div>
+          `).join('');
+          list.querySelectorAll(".wifi-item").forEach(item => {
+            item.addEventListener("click", () => {
+              $("wifi-ssid").value = item.dataset.ssid;
+              list.querySelectorAll(".wifi-item").forEach(i => i.classList.remove("selected"));
+              item.classList.add("selected");
+            });
+          });
+        } catch (e) {
+          list.innerHTML = '<div class="wifi-item" style="justify-content:center; color:var(--text-muted);">Ingresa tu SSID manualmente</div>';
+        }
+      };
+
+      $("scan-wifi-btn").addEventListener("click", scanWifi);
+      scanWifi();
+
+      $("connect-wifi-btn").addEventListener("click", async () => {
+        const ssid = $("wifi-ssid").value.trim();
+        const password = $("wifi-pass").value;
+        if (!ssid) return showStatus("Por favor ingresa el SSID del Wi-Fi", true);
+
+        showStatus("Verificando conexión Wi-Fi...");
+        try {
+          const res = await fetch("/api/wifi/connect", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({ssid, password})
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || "No se pudo conectar a la red Wi-Fi");
+          showStatus("¡Conexión Wi-Fi establecida con éxito!");
+          setTimeout(() => { showStatus(""); setStep(2); }, 1200);
+        } catch (err) {
+          showStatus(err.message, true);
+        }
+      });
+
+      $("back-step-1").addEventListener("click", () => setStep(1));
+
+      $("activate-btn").addEventListener("click", async () => {
+        const code = $("activation-code").value.trim();
+        const serverUrl = $("server-url").value.trim();
+        if (!code) return showStatus("Ingresa el código de activación", true);
+
+        showStatus("Validando código con el servidor...");
+        try {
+          const res = await fetch("/api/activate", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({code, server_url: serverUrl})
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || "Error al activar el dispositivo");
+          showStatus("¡Dispositivo activado con éxito!");
+          setTimeout(() => { showStatus(""); setStep(3); }, 1200);
+        } catch (err) {
+          showStatus(err.message, true);
+        }
+      });
+
+      $("finish-btn").addEventListener("click", async () => {
+        const apSsid = $("ap-ssid").value.trim();
+        const apPass = $("ap-pass").value;
+        showStatus("Guardando configuración y finalizando...");
+        try {
+          await fetch("/api/ap/config", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({ap_ssid: apSsid, ap_pass: apPass})
+          });
+          showStatus("¡Configuración completada! El Raspberry Pi iniciará el monitoreo...");
+          setTimeout(() => location.reload(), 3000);
+        } catch (err) {
+          showStatus("Configuración guardada. Reiniciando servicio...");
+        }
+      });
+    })();
+  </script>
+</body>
+</html>
