@@ -53,9 +53,10 @@
   if(orgForm){
     orgForm.addEventListener("submit",event=>{
       event.preventDefault();
-      const body=Object.fromEntries(new FormData(event.currentTarget));
+      const form=event.currentTarget;
+      const body=Object.fromEntries(new FormData(form));
       api("/api/v1/tenant/organizations",{method:"POST",body:JSON.stringify(body)}).then(()=>{
-        event.currentTarget.reset();
+        form.reset();
         $("org-dialog").close();
         load();
       }).catch(error=>$("org-message").textContent=error.message);
@@ -66,9 +67,10 @@
   if(activationForm){
     activationForm.addEventListener("submit",event=>{
       event.preventDefault();
-      const body=Object.fromEntries(new FormData(event.currentTarget));
+      const form=event.currentTarget;
+      const body=Object.fromEntries(new FormData(form));
       api("/api/v1/tenant/activation-codes",{method:"POST",body:JSON.stringify(body)}).then(data=>{
-        event.currentTarget.reset();
+        form.reset();
         $("activation-dialog").close();
         $("generated-code-display").textContent=data.code;
         $("code-result-dialog").showModal();
@@ -88,16 +90,20 @@
     });
   }
 
-  $("location-form").addEventListener("submit",event=>{
-    event.preventDefault();
-    const body=Object.fromEntries(new FormData(event.currentTarget));
-    ["latitude","longitude","desired_min_c","desired_max_c"].forEach(k=>body[k]=Number(body[k]));
-    api("/api/v1/tenant/locations",{method:"POST",body:JSON.stringify(body)}).then(()=>{
-      event.currentTarget.reset();
-      $("location-dialog").close();
-      load();
-    }).catch(error=>$("location-message").textContent=error.message);
-  });
+  const locationForm=$("location-form");
+  if(locationForm){
+    locationForm.addEventListener("submit",event=>{
+      event.preventDefault();
+      const form=event.currentTarget;
+      const body=Object.fromEntries(new FormData(event.currentTarget));
+      ["latitude","longitude","desired_min_c","desired_max_c"].forEach(k=>body[k]=Number(body[k]));
+      api("/api/v1/tenant/locations",{method:"POST",body:JSON.stringify(body)}).then(()=>{
+        form.reset();
+        $("location-dialog").close();
+        load();
+      }).catch(error=>$("location-message").textContent=error.message);
+    });
+  }
 
   document.querySelector("[data-logout]").addEventListener("click",()=>api("/api/v1/auth/logout",{method:"POST",body:"{}"}).then(()=>location.assign("/login")));
   $("refresh-tenant").addEventListener("click",load);
