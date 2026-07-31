@@ -2,25 +2,36 @@
 
 case "$1" in
   start)
-    [ -s /data/climasense/device.token ] && grep -q '^DEVICE_ID=' /data/climasense/.env 2>/dev/null && exit 0
-    code=""
-    if [ -s /data/climasense/activation.code ]; then
-      IFS= read -r code < /data/climasense/activation.code
-    elif [ -c /dev/tty1 ]; then
-      exec 3<>/dev/tty1
-      printf '\nWi-Fi configurado. Conectando con ClimaSense SaaS...\n' >&3
-      attempts=0
-      while [ "$attempts" -lt 30 ]; do
-        ip route 2>/dev/null | grep -q '^default' && break
-        sleep 1
-        attempts=$((attempts + 1))
-      done
-      printf 'Numero de activacion entregado por su empresa: ' >&3
-      IFS= read -r code <&3
+    [ -s /data/climasense/device.token ] &&
+      grep -q '^DEVICE_ID=' /data/climasense/.env 2>/dev/null &&
+      exit 0
+
+    if [ ! -s /data/climasense/activation.code ]; then
+      echo "ClimaSense: activacion pendiente en el portal web"
+      exit 0
     fi
-    [ -n "$code" ] || { echo "ClimaSense: falta el numero de activacion"; exit 1; }
+
+    IFS= read -r code < /data/climasense/activation.code
+    [ -n "$code" ] || {
+      echo "ClimaSense: el codigo de activacion esta vacio"
+      exit 1
+    }
+
+    echo "ClimaSense: conectando con ClimaSense SaaS..."
+    attempts=0
+    while [ "$attempts" -lt 30 ]; do
+      ip route 2>/dev/null | grep -q '^default' && break
+      sleep 1
+      attempts=$((attempts + 1))
+    done
+    ip route 2>/dev/null | grep -q '^default' || {
+      echo "ClimaSense: sin conectividad; la activacion se reintentara al reiniciar"
+      exit 1
+    }
+
     hardware_id="$(sed -n 's/^Serial[[:space:]]*:[[:space:]]*//p' /proc/cpuinfo | tail -n 1)"
-    [ -n "$hardware_id" ] || hardware_id="$(cat /etc/machine-id 2>/dev/null || hostname)"
+    [ -n "$hardware_id" ] ||
+      hardware_id="$(cat /etc/machine-id 2>/dev/null || hostname)"
     export CLIMASENSE_ACTIVATION_CODE="$code"
     export CLIMASENSE_HARDWARE_ID="$hardware_id"
     export CLIMASENSE_DEVICE_NAME="ClimaSense Edge"

@@ -1,6 +1,11 @@
 import "src/Config.joss"
-import "src/TelemetryQueue.joss"
-import "src/EdgeService.joss"
+import "app/ApiResponse.joss"
+import "app/OnboardingController.joss"
+import "routes.joss"
 
-$config = EdgeConfig::load()
-EdgeService::run($config)
+class Main {
+    Init main() {
+        System::log("ClimaSense: portal de onboarding iniciado")
+        Server::start()
+    }
+}

@@ -1,17 +1,32 @@
 #!/bin/sh
 
+is_activated() {
+  [ -s /data/climasense/device.token ] &&
+    grep -q '^DEVICE_ID=' /data/climasense/.env 2>/dev/null
+}
+
+provisioning_ready() {
+  [ -s /data/climasense/wpa_supplicant.conf ] &&
+    [ -s /data/climasense/activation.code ] &&
+    [ -s /data/climasense/hostapd.conf ]
+}
+
 case "$1" in
   start)
-    if [ -s /data/climasense/wpa_supplicant.conf ]; then
+    if is_activated || provisioning_ready; then
+      killall hostapd dnsmasq 2>/dev/null || true
+      ifconfig wlan0 0.0.0.0 2>/dev/null || ip addr flush dev wlan0 2>/dev/null
       install -m 0600 /data/climasense/wpa_supplicant.conf /etc/wpa_supplicant.conf
+      killall wpa_supplicant 2>/dev/null || true
       wpa_supplicant -B -i wlan0 -c /etc/wpa_supplicant.conf
       udhcpc -i wlan0 -b -q
     else
-      echo "ClimaSense: configure /data/climasense/wpa_supplicant.conf"
+      echo "ClimaSense: esperando Wi-Fi y activacion desde el portal web"
     fi
     ;;
   stop)
-    killall wpa_supplicant 2>/dev/null || true
+    killall wpa_supplicant udhcpc 2>/dev/null || true
+    ip addr flush dev wlan0 2>/dev/null || ifconfig wlan0 0.0.0.0 2>/dev/null
     ;;
   restart)
     "$0" stop

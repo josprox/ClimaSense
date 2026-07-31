@@ -1,9 +1,11 @@
 kernel=Image
 arm_64bit=1
 enable_uart=1
-dtoverlay=miniuart-bt
+dtoverlay=disable-bt
 dtparam=i2c_arm=on
 dtparam=watchdog=on
+dtparam=sdio_overclock=25
+gpio=17=ip,pu
 disable_audio_dither=1
 dtparam=audio=off
 camera_auto_detect=0

@@ -1,23 +1,183 @@
 #!/bin/sh
 
+name="climasense-onboarding"
+portal_pidfile="/run/$name.pid"
+watcher_pidfile="/run/$name-watcher.pid"
+maintenance_flag="/run/climasense-maintenance.active"
+working_dir="/opt/climasense/edge"
+logfile="/data/climasense/onboarding.log"
+
+log_message() {
+  echo "$1"
+  echo "$1" >> "$logfile" 2>/dev/null || true
+}
+
+is_activated() {
+  [ -s /data/climasense/device.token ] &&
+    grep -q '^DEVICE_ID=' /data/climasense/.env 2>/dev/null
+}
+
+initial_setup_ready() {
+  [ -s /data/climasense/wpa_supplicant.conf ] &&
+    [ -s /data/climasense/activation.code ] &&
+    [ -s /data/climasense/hostapd.conf ]
+}
+
+stop_portal() {
+  start-stop-daemon -K -p "$portal_pidfile" -R TERM/5/KILL/2 2>/dev/null || true
+  rm -f "$portal_pidfile"
+  killall hostapd dnsmasq 2>/dev/null || true
+}
+
+wait_for_wifi() {
+  attempts=0
+  while [ ! -d /sys/class/net/wlan0 ] && [ "$attempts" -lt 30 ]; do
+    sleep 1
+    attempts=$((attempts + 1))
+  done
+  [ -d /sys/class/net/wlan0 ]
+}
+
+start_portal() {
+  ap_config="$1"
+  mkdir -p /data/climasense
+  touch "$logfile"
+  chmod 0600 "$logfile" 2>/dev/null || true
+  log_message "ClimaSense: esperando interfaz Wi-Fi..."
+  wait_for_wifi || {
+    log_message "ClimaSense ERROR: wlan0 no aparecio despues de 30 segundos"
+    return 1
+  }
+
+  log_message "ClimaSense: levantando hotspot de configuracion..."
+  killall wpa_supplicant udhcpc 2>/dev/null || true
+  ip addr flush dev wlan0 2>/dev/null || ifconfig wlan0 0.0.0.0 2>/dev/null
+  ip link set wlan0 up 2>>"$logfile" || true
+  ifconfig wlan0 192.168.4.1 netmask 255.255.255.0 up 2>/dev/null ||
+    ip addr add 192.168.4.1/24 dev wlan0 2>>"$logfile" || {
+      log_message "ClimaSense ERROR: no se pudo configurar 192.168.4.1 en wlan0"
+      return 1
+    }
+
+  hostapd_attempt=0
+  hostapd_ready=0
+  while [ "$hostapd_attempt" -lt 10 ]; do
+    if hostapd -B "$ap_config" >>"$logfile" 2>&1; then
+      hostapd_ready=1
+      break
+    fi
+    hostapd_attempt=$((hostapd_attempt + 1))
+    log_message "ClimaSense: hostapd aun no esta listo; reintento $hostapd_attempt/10"
+    sleep 2
+  done
+  [ "$hostapd_ready" = "1" ] || {
+    log_message "ClimaSense ERROR: hostapd no pudo iniciar; revise $logfile"
+    return 1
+  }
+  dnsmasq -C /etc/dnsmasq.conf >>"$logfile" 2>&1 || {
+    killall hostapd 2>/dev/null || true
+    log_message "ClimaSense ERROR: dnsmasq no pudo iniciar; revise $logfile"
+    return 1
+  }
+
+  log_message "ClimaSense: iniciando portal en http://192.168.4.1:8080"
+  cd "$working_dir" || exit 1
+  start-stop-daemon -S -b -m -p "$portal_pidfile" -c climasense:climasense \
+    -x /usr/bin/joss -- server start >>"$logfile" 2>&1 || {
+      stop_portal
+      log_message "ClimaSense ERROR: no se pudo lanzar el servidor Joss"
+      return 1
+    }
+  sleep 2
+  [ -s "$portal_pidfile" ] &&
+    kill -0 "$(cat "$portal_pidfile" 2>/dev/null)" 2>/dev/null || {
+      stop_portal
+      log_message "ClimaSense ERROR: el portal Joss termino durante el arranque"
+      return 1
+    }
+  log_message "ClimaSense: hotspot y portal listos"
+}
+
+start_watcher() {
+  mode="$1"
+  [ -s "$watcher_pidfile" ] &&
+    kill -0 "$(cat "$watcher_pidfile" 2>/dev/null)" 2>/dev/null &&
+    return 0
+
+  (
+    if [ "$mode" = "maintenance" ]; then
+      while [ ! -s /data/climasense/maintenance.complete ]; do
+        sleep 1
+      done
+    else
+      while ! initial_setup_ready; do
+        is_activated && exit 0
+        sleep 1
+      done
+    fi
+
+    # Deja que la respuesta HTTP llegue al telefono antes de apagar el AP.
+    sleep 3
+    stop_portal
+
+    if [ "$mode" = "maintenance" ]; then
+      rm -f /data/climasense/maintenance.complete "$maintenance_flag"
+      /etc/init.d/S45climasense-network restart
+      /etc/init.d/S95climasense restart
+    else
+      /etc/init.d/S45climasense-network restart
+      if /etc/init.d/S55climasense-activation start; then
+        /etc/init.d/S95climasense restart
+      fi
+    fi
+    rm -f "$watcher_pidfile"
+  ) &
+  echo "$!" > "$watcher_pidfile"
+}
+
 case "$1" in
   start)
-    [ -s /data/climasense/wpa_supplicant.conf ] && exit 0
-    tty=/dev/tty1
-    [ -c "$tty" ] || { echo "ClimaSense: no hay consola para configurar Wi-Fi"; exit 0; }
-    exec 3<>"$tty"
-    printf '\n=== ClimaSense AI · Configuracion inicial ===\n' >&3
-    printf 'Nombre de la red Wi-Fi (SSID): ' >&3
-    IFS= read -r ssid <&3
-    printf 'Contrasena Wi-Fi: ' >&3
-    stty -echo <"$tty"
-    IFS= read -r password <&3
-    stty echo <"$tty"
-    printf '\nGuardando red de forma segura...\n' >&3
-    umask 077
-    wpa_passphrase "$ssid" "$password" | sed '/^[[:space:]]*#psk=/d' > /data/climasense/wpa_supplicant.conf
-    chown 1000:1000 /data/climasense/wpa_supplicant.conf
-    chmod 0600 /data/climasense/wpa_supplicant.conf
-    unset password
+    # Una instalacion headless con los tres archivos preparados continua con
+    # red y activacion sin abrir el portal.
+    is_activated && exit 0
+    initial_setup_ready && exit 0
+    rm -f /data/climasense/maintenance.complete "$maintenance_flag"
+    start_portal /etc/hostapd.conf || exit 1
+    start_watcher initial
+    ;;
+  maintenance)
+    is_activated || {
+      echo "ClimaSense: el modo de mantenimiento requiere activacion previa"
+      exit 1
+    }
+    [ -s /data/climasense/hostapd.conf ] || {
+      echo "ClimaSense: falta la configuracion protegida del hotspot"
+      exit 1
+    }
+    [ -e "$maintenance_flag" ] && exit 0
+
+    : > "$maintenance_flag"
+    rm -f /data/climasense/maintenance.complete
+    /etc/init.d/S95climasense stop
+    /etc/init.d/S45climasense-network stop
+    start_portal /data/climasense/hostapd.conf || {
+      rm -f "$maintenance_flag"
+      /etc/init.d/S45climasense-network restart
+      /etc/init.d/S95climasense restart
+      exit 1
+    }
+    start_watcher maintenance
+    ;;
+  stop)
+    if [ -s "$watcher_pidfile" ]; then
+      watcher_pid="$(cat "$watcher_pidfile" 2>/dev/null || true)"
+      [ -n "$watcher_pid" ] && kill "$watcher_pid" 2>/dev/null || true
+    fi
+    rm -f "$watcher_pidfile" "$maintenance_flag"
+    stop_portal
+    ;;
+  *)
+    echo "Usage: $0 {start|maintenance|stop}"
+    exit 1
     ;;
 esac

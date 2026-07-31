@@ -1,0 +1,91 @@
+#!/bin/sh
+
+wait_for_wifi() {
+  attempts=0
+  while [ ! -d /sys/class/net/wlan0 ] && [ "$attempts" -lt 15 ]; do
+    sleep 1
+    attempts=$((attempts + 1))
+  done
+  [ -d /sys/class/net/wlan0 ]
+}
+
+show_board_model() {
+  if [ -r /proc/device-tree/model ]; then
+    model="$(tr -d '\000' < /proc/device-tree/model)"
+    echo "ClimaSense: placa detectada: $model"
+  fi
+}
+
+power_cycle_wifi() {
+  gpio_base=""
+  for chip in /sys/class/gpio/gpiochip*; do
+    [ -r "$chip/label" ] || continue
+    case "$(cat "$chip/label")" in
+      *pinctrl-bcm2835*)
+        gpio_base="$(cat "$chip/base")"
+        break
+        ;;
+    esac
+  done
+  [ -n "$gpio_base" ] || {
+    echo "ClimaSense: no se encontro el controlador GPIO para WL_ON"
+    return 1
+  }
+
+  wl_on_gpio=$((gpio_base + 41))
+  gpio_path="/sys/class/gpio/gpio$wl_on_gpio"
+  if [ ! -d "$gpio_path" ]; then
+    printf '%s' "$wl_on_gpio" > /sys/class/gpio/export || return 1
+  fi
+
+  echo "ClimaSense: reiniciando alimentacion del chip Wi-Fi (WL_ON)..."
+  printf '%s' low > "$gpio_path/direction" || return 1
+  sleep 1
+  printf '%s' high > "$gpio_path/direction" || return 1
+  sleep 2
+}
+
+retry_sdio() {
+  host_path="$(readlink -f /sys/class/mmc_host/mmc1 2>/dev/null || true)"
+  [ -n "$host_path" ] || return 1
+  platform_device="$(basename "$(dirname "$(dirname "$host_path")")")"
+  driver_dir="/sys/bus/platform/drivers/mmc-bcm2835"
+  [ -e "$driver_dir/$platform_device" ] || return 1
+
+  echo "ClimaSense: reintentando inicializacion SDIO de $platform_device..."
+  printf '%s' "$platform_device" > "$driver_dir/unbind" || return 1
+  power_cycle_wifi || true
+  printf '%s' "$platform_device" > "$driver_dir/bind" || return 1
+}
+
+case "$1" in
+  start)
+    show_board_model
+    echo "ClimaSense: cargando controlador Wi-Fi..."
+    if [ ! -d /sys/class/net/wlan0 ]; then
+      modprobe brcmfmac || {
+        echo "ClimaSense ERROR: no se pudo cargar brcmfmac"
+        exit 1
+      }
+    fi
+    wait_for_wifi || retry_sdio || true
+    wait_for_wifi || {
+      dmesg | grep -E 'mmc1|mmcnr|brcmfmac' | tail -n 12
+      echo "ClimaSense ERROR: el controlador cargo pero wlan0 no aparecio"
+      exit 1
+    }
+    ip link set wlan0 up 2>/dev/null || ifconfig wlan0 up
+    echo "ClimaSense: wlan0 disponible"
+    ;;
+  stop)
+    ip link set wlan0 down 2>/dev/null || ifconfig wlan0 down 2>/dev/null || true
+    ;;
+  restart)
+    "$0" stop
+    "$0" start
+    ;;
+  *)
+    echo "Usage: $0 {start|stop|restart}"
+    exit 1
+    ;;
+esac

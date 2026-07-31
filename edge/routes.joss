@@ -1,0 +1,5 @@
+Router::get("/", "OnboardingController@index")
+Router::get("/api/setup/status", "OnboardingController@setupStatus")
+Router::get("/api/wifi/scan", "OnboardingController@scanWifi")
+Router::post("/api/wifi/connect", "OnboardingController@connectWifi")
+Router::post("/api/setup/complete", "OnboardingController@completeSetup")

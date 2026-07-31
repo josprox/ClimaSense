@@ -6,7 +6,7 @@
 | Plugin I2C Linux | IMPLEMENTADO, PENDIENTE DE PRUEBA EN HARDWARE | Compila linux/arm64 sin CGO; ioctl, timeout, reintentos y cierre |
 | Driver BMP280 | IMPLEMENTADO, PENDIENTE DE PRUEBA EN HARDWARE | Vector de compensacion y errores probados |
 | Cola Edge SQLite | IMPLEMENTADO Y PROBADO | Persistencia, orden, idempotencia y ACK WebSocket por dispositivo probados en Windows |
-| Onboarding Edge | IMPLEMENTADO, PENDIENTE DE PRUEBA EN HARDWARE | Primer arranque solicita Wi-Fi y activacion; admite preseed headless; serial ligado al codigo |
+| Onboarding Edge | IMPLEMENTADO, PENDIENTE DE PRUEBA EN HARDWARE | Portal web solicita Wi-Fi, activacion y hotspot WPA2 sin consola; GPIO17 habilita mantenimiento temporal; serial ligado al codigo |
 | Edge completo | PARCIAL | Ciclo Joss y WebSocket funcionales; workers concurrentes, heartbeat/config remota pendientes |
 | Seguridad de aplicacion | IMPLEMENTADO Y PROBADO | HMAC, replay temporal y comparacion constante probados; transporte configurado deliberadamente como HTTP sin TLS |
 | SaaS multiempresa | IMPLEMENTADO Y PROBADO | Admin, clientes, organizaciones, ubicaciones, JWT/roles, activacion, aislamiento por empresa y paneles verificados |

@@ -1,0 +1,75 @@
+#!/bin/sh
+
+name="climasense-maintenance-button"
+pidfile="/run/$name.pid"
+gpio_chip="${CLIMASENSE_MAINTENANCE_GPIO_CHIP:-gpiochip0}"
+gpio_offset="${CLIMASENSE_MAINTENANCE_GPIO_OFFSET:-17}"
+
+is_activated() {
+  [ -s /data/climasense/device.token ] &&
+    grep -q '^DEVICE_ID=' /data/climasense/.env 2>/dev/null
+}
+
+read_button() {
+  gpioget "$gpio_chip" "$gpio_offset" 2>/dev/null
+}
+
+prepare_gpio() {
+  command -v gpioget >/dev/null 2>&1 || {
+    echo "ClimaSense: gpioget no esta instalado"
+    return 1
+  }
+  gpioget "$gpio_chip" "$gpio_offset" >/dev/null 2>&1 || {
+    echo "ClimaSense: GPIO17 no disponible en $gpio_chip"
+    return 1
+  }
+}
+
+monitor_button() {
+  prepare_gpio || exit 1
+
+  while true; do
+    if [ "$(read_button)" = "0" ] &&
+      is_activated &&
+      [ ! -e /run/climasense-maintenance.active ]; then
+      held=0
+      while [ "$(read_button)" = "0" ] && [ "$held" -lt 5 ]; do
+        sleep 1
+        held=$((held + 1))
+      done
+      if [ "$held" -ge 5 ]; then
+        echo "ClimaSense: activando hotspot de mantenimiento"
+        /etc/init.d/S44climasense-onboarding maintenance
+        while [ "$(read_button)" = "0" ]; do
+          sleep 1
+        done
+      fi
+    fi
+    sleep 1
+  done
+}
+
+case "$1" in
+  start)
+    [ -s "$pidfile" ] &&
+      kill -0 "$(cat "$pidfile" 2>/dev/null)" 2>/dev/null &&
+      exit 0
+    monitor_button &
+    echo "$!" > "$pidfile"
+    ;;
+  stop)
+    if [ -s "$pidfile" ]; then
+      button_pid="$(cat "$pidfile" 2>/dev/null || true)"
+      [ -n "$button_pid" ] && kill "$button_pid" 2>/dev/null || true
+    fi
+    rm -f "$pidfile"
+    ;;
+  restart)
+    "$0" stop
+    "$0" start
+    ;;
+  *)
+    echo "Usage: $0 {start|stop|restart}"
+    exit 1
+    ;;
+esac

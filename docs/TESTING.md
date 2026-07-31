@@ -8,4 +8,4 @@ Las formulas se verifican con el vector del datasheet: temperatura aproximada `2
 
 La imagen construida se valida con SHA-256, tabla MBR, particiones FAT32/ext4, `e2fsck` y una auditoria interna de runtime, plugins, firmware Wi-Fi, usuarios, permisos y scripts de inicio.
 
-No estan cubiertos sin hardware: bus real, ambas direcciones fisicas, desconexion electrica, asociacion Wi-Fi, watchdog, corte de energia y arranque de la imagen.
+No estan cubiertos sin hardware: bus real, ambas direcciones fisicas, desconexion electrica, asociacion Wi-Fi, watchdog, pulsacion prolongada de GPIO17, transicion cliente/AP/cliente, corte de energia y arranque de la imagen.

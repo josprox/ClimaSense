@@ -1,6 +1,6 @@
 name: climasense_edge
 version: 0.2.0
-type: console
+type: web
 entry:
   main: main.joss
 dependencies:

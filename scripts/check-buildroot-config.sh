@@ -17,4 +17,5 @@ cp -R "$root/os/buildroot/board/." "$source/board/climasense/"
 make -C "$source" raspberrypizero2w_64_defconfig
 cat "$root/os/buildroot/climasense.fragment" >> "$source/.config"
 make -C "$source" olddefconfig
-grep -E 'BR2_(aarch64|PACKAGE_WPA_SUPPLICANT|PACKAGE_I2C_TOOLS|PACKAGE_BRCMFMAC_SDIO_FIRMWARE_RPI(_WIFI)?|LINUX_KERNEL_CONFIG_FRAGMENT_FILES|ROOTFS_OVERLAY|PACKAGE_RPI_FIRMWARE_CONFIG_FILE)=' "$source/.config"
+grep -E 'BR2_(aarch64|PACKAGE_WPA_SUPPLICANT|PACKAGE_I2C_TOOLS|PACKAGE_LIBGPIOD(_TOOLS)?|PACKAGE_BRCMFMAC_SDIO_FIRMWARE_RPI(_WIFI)?|LINUX_KERNEL_CONFIG_FRAGMENT_FILES|ROOTFS_OVERLAY|PACKAGE_RPI_FIRMWARE_CONFIG_FILE)=' "$source/.config"
+grep -q '^# BR2_TARGET_GENERIC_GETTY is not set$' "$source/.config"

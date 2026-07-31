@@ -9,3 +9,24 @@ env.enc
 *.sqlite-shm
 *.sqlite-wal
 plugins/*/native/
+edge/storage/
+
+# Artefactos generados por compilaciones locales y Buildroot.
+/build/
+/cache/
+/.cache/
+/tmp/
+/os/buildroot/buildroot-*/
+
+# Paquetes Joss generados por scripts/build-plugins.sh y sus copias instaladas.
+/plugins/*/*.jp
+/edge/plugins/
+/server/plugins/
+
+# Diagnosticos y archivos temporales locales.
+*.log
+*.tmp
+*.bak
+*.swp
+*.swo
+*.orig

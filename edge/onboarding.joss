@@ -1,10 +1,11 @@
 import "src/Config.joss"
-import "src/OnboardingController.joss"
+import "app/ApiResponse.joss"
+import "app/OnboardingController.joss"
 
 Router::get("/", "OnboardingController@index")
+Router::get("/api/setup/status", "OnboardingController@setupStatus")
 Router::get("/api/wifi/scan", "OnboardingController@scanWifi")
 Router::post("/api/wifi/connect", "OnboardingController@connectWifi")
-Router::post("/api/activate", "OnboardingController@activateDevice")
-Router::post("/api/ap/config", "OnboardingController@configAP")
+Router::post("/api/setup/complete", "OnboardingController@completeSetup")
 
 print("Servidor de onboarding iniciado en http://0.0.0.0:8080 (SSID: Configuración ClimaSense)")

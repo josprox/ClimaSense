@@ -8,9 +8,14 @@ working_dir="/opt/climasense/edge"
 case "$1" in
   start)
     [ -f /data/climasense/.env ] || { echo "ClimaSense: falta /data/climasense/.env"; exit 1; }
+    if [ ! -s /data/climasense/device.token ] ||
+      ! grep -q '^DEVICE_ID=' /data/climasense/.env 2>/dev/null; then
+      echo "ClimaSense: servicio Edge pendiente de activacion web"
+      exit 0
+    fi
     echo "Starting $name"
     cd "$working_dir"
-    start-stop-daemon -S -b -m -p "$pidfile" -c climasense:climasense -x "$command" -- run main.joss
+    start-stop-daemon -S -b -m -p "$pidfile" -c climasense:climasense -x "$command" -- run service.joss
     ;;
   stop)
     echo "Stopping $name"
