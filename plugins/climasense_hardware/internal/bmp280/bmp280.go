@@ -45,6 +45,7 @@ type Measurement struct {
 	PressurePa   float64 `json:"pressure_pa"`
 	PressureHPa  float64 `json:"pressure_hpa"`
 	Address      string  `json:"sensor_address"`
+	ChipModel    string  `json:"chip_model"`
 	Status       string  `json:"sensor_status"`
 	MeasuredAt   string  `json:"measured_at"`
 }
@@ -52,6 +53,7 @@ type Measurement struct {
 type Sensor struct {
 	device      i2c.Device
 	address     uint16
+	chipModel   string
 	config      Config
 	calibration Calibration
 }
@@ -74,10 +76,12 @@ func New(device i2c.Device, address uint16, config Config) (*Sensor, error) {
 	if err := device.ReadRegister(regID, id); err != nil {
 		return nil, fmt.Errorf("leer chip ID: %w", err)
 	}
+	chipModel := ""
 	switch id[0] {
 	case ChipIDBMP280:
+		chipModel = "bmp280"
 	case ChipIDBME280:
-		return nil, errors.New("se detecto BME280 (chip ID 0x60), no BMP280")
+		chipModel = "bme280"
 	default:
 		return nil, fmt.Errorf("chip ID inesperado 0x%02X", id[0])
 	}
@@ -99,7 +103,7 @@ func New(device i2c.Device, address uint16, config Config) (*Sensor, error) {
 	if config.Timeout <= 0 {
 		config.Timeout = time.Second
 	}
-	return &Sensor{device: device, address: address, config: config, calibration: calibration}, nil
+	return &Sensor{device: device, address: address, chipModel: chipModel, config: config, calibration: calibration}, nil
 }
 
 func (s *Sensor) Measure() (Measurement, error) {
@@ -139,7 +143,7 @@ func (s *Sensor) Measure() (Measurement, error) {
 	}
 	return Measurement{
 		TemperatureC: round(temperature, 2), PressurePa: round(pressure, 2), PressureHPa: round(pressure/100, 2),
-		Address: fmt.Sprintf("0x%02X", s.address), Status: "ok", MeasuredAt: time.Now().UTC().Format(time.RFC3339Nano),
+		Address: fmt.Sprintf("0x%02X", s.address), ChipModel: s.chipModel, Status: "ok", MeasuredAt: time.Now().UTC().Format(time.RFC3339Nano),
 	}, nil
 }
 

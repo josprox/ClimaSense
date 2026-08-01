@@ -1,0 +1,15 @@
+[Unit]
+Description=ClimaSense local onboarding portal
+After=network-pre.target
+Before=climasense-network.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/lib/climasense/onboarding start
+ExecStop=/usr/local/lib/climasense/onboarding stop
+RemainAfterExit=yes
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

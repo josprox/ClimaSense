@@ -76,10 +76,23 @@ func TestDatasheetCompensation(t *testing.T) {
 	}
 }
 
-func TestRejectsBME280AndUnknownChip(t *testing.T) {
-	if _, err := New(calibratedDevice(ChipIDBME280), 0x76, DefaultConfig()); err == nil {
-		t.Fatal("BME280 was accepted")
+func TestAcceptsBME280ForTemperatureAndPressure(t *testing.T) {
+	d := calibratedDevice(ChipIDBME280)
+	setRaw(d, 415148, 519888)
+	sensor, err := New(d, 0x76, DefaultConfig())
+	if err != nil {
+		t.Fatal(err)
 	}
+	measurement, err := sensor.Measure()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if measurement.ChipModel != "bme280" {
+		t.Fatalf("chip model = %q", measurement.ChipModel)
+	}
+}
+
+func TestRejectsUnknownChip(t *testing.T) {
 	if _, err := New(calibratedDevice(0x00), 0x76, DefaultConfig()); err == nil {
 		t.Fatal("unknown chip was accepted")
 	}

@@ -1,22 +1,7 @@
-# Grabacion
+# Grabacion e instalacion
 
-Verifique primero el dispositivo de bloque; un destino incorrecto destruye datos.
+La ruta soportada no graba una imagen ClimaSense propia. Use Raspberry Pi Imager para instalar Raspberry Pi OS Lite de 64 bits, configure usuario, SSH, Raspberry Pi Connect y una red temporal funcional —preferentemente mediante el adaptador USB si el radio integrado falla— y arranque la placa.
 
-```sh
-./scripts/flash-image.sh /dev/sdX
-```
+Genere `dist/climasense-raspios-installer.tar.gz` con `scripts/build-raspios-bundle.sh`, copielo a la Raspberry y ejecute `sudo sh os/raspios/install.sh`. El instalador conserva la conexion actual hasta el reinicio. El procedimiento detallado y los comandos de actualizacion estan en `RASPBERRY_PI_OS.md`.
 
-El script exige escribir `FLASH`, usa bloques de 4 MiB, `fsync` y `sync`. Alternativamente use Raspberry Pi Imager con `dist/climasense-os-rpi-zero-2-w.img` y verifique el SHA-256 publicado.
-
-El flujo normal ya no requiere escribir identidad ni token en la tarjeta: conecte pantalla y teclado y el asistente solicitara Wi-Fi y activacion. Para un despliegue headless puede preconfigurar solo estos dos archivos:
-
-```sh
-sudo mount /dev/sdX2 /mnt/climasense
-sudo install -o 1000 -g 1000 -m 0600 os/buildroot/board/rootfs-overlay/etc/wpa_supplicant.conf.example /mnt/climasense/data/climasense/wpa_supplicant.conf
-printf '%s\n' 'CODIGO-DE-ACTIVACION' | sudo tee /mnt/climasense/data/climasense/activation.code >/dev/null
-sudo chown 1000:1000 /mnt/climasense/data/climasense/activation.code
-sudo chmod 0600 /mnt/climasense/data/climasense/activation.code
-sudo umount /mnt/climasense
-```
-
-Edite la red antes de desmontar. La URL SaaS se fija en `edge/env.example` o `.env` durante el build; el dispositivo obtiene identidad y token al consumir el codigo. Sustituya `/dev/sdX2` solo despues de verificar el dispositivo correcto.
+Tras reiniciar aparece `Configuracion ClimaSense`; en `http://192.168.4.1:8080` se capturan Wi-Fi, codigo de activacion y credenciales del hotspot privado. No se escribe identidad ni token en la tarjeta y no se solicita ningun dato por consola. `scripts/flash-image.sh` y la imagen Buildroot se mantienen exclusivamente para reproducir el camino historico.

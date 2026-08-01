@@ -1,8 +1,10 @@
 name: climasense_edge
 version: 0.2.0
-type: console
+type: web
+environment:
+  joss: ">=3.6.3"
 entry:
   main: main.joss
 dependencies:
-  climasense_hardware: "0.1.0"
+  climasense_hardware: "0.1.1"
   climasense_transport: "0.2.0"

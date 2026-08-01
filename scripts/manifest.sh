@@ -15,7 +15,7 @@ cat <<EOF
   "generated_at": "$generated",
   "architecture": "linux-arm64",
   "buildroot": "$(cat "$root/os/buildroot/buildroot.version")",
-  "joss": "3.6.1",
+  "joss": "3.6.3",
   "image_status": "$image_status",
   "hardware_validation": "pending",
   "artifacts": [

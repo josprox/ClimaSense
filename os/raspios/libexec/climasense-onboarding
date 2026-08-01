@@ -1,0 +1,97 @@
+#!/bin/sh
+set -eu
+data=/data/climasense
+log="$data/onboarding.log"
+portal_pidfile=/run/climasense-onboarding.pid
+failure_marker="$data/onboarding.failed"
+requested_mode="${1:-start}"
+mode="$requested_mode"
+ready() { [ -s "$data/wpa_supplicant.conf" ] && [ -s "$data/activation.code" ] && [ -s "$data/hostapd.conf" ]; }
+active() { /usr/local/lib/climasense/activation-ready; }
+stop() {
+  if [ -s "$portal_pidfile" ]; then
+    portal_pid="$(cat "$portal_pidfile")"
+    kill "$portal_pid" 2>/dev/null || true
+    rm -f "$portal_pidfile"
+  fi
+  pkill -f '/usr/local/bin/joss server start' 2>/dev/null || true
+  pkill hostapd 2>/dev/null || true
+  pkill dnsmasq 2>/dev/null || true
+}
+fail() {
+  echo "ClimaSense ERROR: $1" | tee -a "$log" >&2
+  stop
+  printf '%s\n' "$1" >"$failure_marker"
+  chmod 0600 "$failure_marker"
+  rm -f /etc/NetworkManager/conf.d/99-climasense-wifi.conf
+  systemctl restart --no-block NetworkManager.service 2>/dev/null || true
+  exit 1
+}
+[ "$mode" = stop ] && { stop; exit 0; }
+if [ "$mode" = recovery ]; then
+  if active; then
+    mode=maintenance
+  else
+    rm -f "$data/activation.code"
+    mode=start
+  fi
+fi
+if [ "$mode" = maintenance ]; then
+  active || { echo "ClimaSense: mantenimiento requiere activacion" >&2; exit 1; }
+  [ -s "$data/hostapd.conf" ] || { echo "ClimaSense: falta hostapd.conf privado" >&2; exit 1; }
+  ap_config="$data/hostapd.conf"
+  completion="$data/maintenance.complete"
+  rm -f "$completion"
+  systemctl stop climasense-edge.service climasense-network.service || true
+else
+  active && exit 0
+  if [ -s "$failure_marker" ]; then
+    echo "ClimaSense: hotspot deshabilitado por rescate; NetworkManager conserva la conectividad" >>"$log"
+    exit 0
+  fi
+  ap_config=/etc/climasense-hostapd.conf
+  completion=""
+fi
+mkdir -p "$data"; touch "$log"; chmod 0600 "$log"
+stop
+/usr/local/lib/climasense/network stop || true
+iface="$(/usr/local/lib/climasense/wifi-interface ap)"
+echo "ClimaSense: usando $iface para el hotspot" >>"$log"
+command -v rfkill >/dev/null 2>&1 && rfkill unblock wifi || true
+ip link set "$iface" up
+ip addr flush dev "$iface" || true
+ip addr add 192.168.4.1/24 dev "$iface"
+{ printf 'interface=%s\n' "$iface"; cat "$ap_config"; } > /run/climasense-hostapd.conf
+{ printf 'interface=%s\n' "$iface"; cat /etc/climasense-dnsmasq.conf; } > /run/climasense-dnsmasq.conf
+hostapd -B /run/climasense-hostapd.conf >>"$log" 2>&1 || fail "hostapd no pudo publicar el hotspot en $iface"
+dnsmasq -C /run/climasense-dnsmasq.conf >>"$log" 2>&1 || fail "dnsmasq no pudo iniciar DHCP en $iface"
+(
+  cd /opt/climasense/edge
+  exec runuser -u climasense -- /usr/local/bin/joss server start
+) >>"$log" 2>&1 &
+portal_pid=$!
+printf '%s\n' "$portal_pid" >"$portal_pidfile"
+sleep 2
+if ! kill -0 "$portal_pid" 2>/dev/null; then
+  fail "el portal web no pudo iniciar; revise $log"
+fi
+if [ "$mode" = maintenance ]; then
+  while [ ! -s "$completion" ]; do
+    kill -0 "$portal_pid" 2>/dev/null || fail "el portal web se detuvo"
+    sleep 1
+  done
+else
+  while ! ready; do
+    active && { stop; exit 0; }
+    kill -0 "$portal_pid" 2>/dev/null || fail "el portal web se detuvo"
+    sleep 1
+  done
+fi
+sleep 3; stop
+rm -f "$failure_marker"
+if [ "$requested_mode" != start ]; then
+  systemctl restart --no-block climasense-network.service
+  if [ "$mode" != maintenance ]; then systemctl restart --no-block climasense-activation.service || true; fi
+  systemctl restart --no-block climasense-edge.service || true
+fi
+rm -f "$completion"

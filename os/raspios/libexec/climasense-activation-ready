@@ -1,0 +1,6 @@
+#!/bin/sh
+set -eu
+
+data=/data/climasense
+[ -s "$data/device.token" ] || exit 1
+grep -Eq '^DEVICE_ID=[^"[:space:]]+$|^DEVICE_ID="[^"[:space:]]+"$' "$data/.env" 2>/dev/null

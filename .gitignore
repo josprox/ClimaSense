@@ -9,3 +9,27 @@ env.enc
 *.sqlite-shm
 *.sqlite-wal
 plugins/*/native/
+
+# Paquetes, bitacoras y estado generados localmente.
+plugins/*/*.jp
+plugins/*/*/*.jp
+plugins/*/log.txt
+log.txt
+storage/
+*.log
+*.tmp
+*.bak
+*.swp
+*.swo
+*.orig
+
+# Cache de compilacion y fuentes temporales de Buildroot.
+build/
+cache/
+.cache/
+tmp/
+os/buildroot/buildroot-*/
+
+# Directorios del monorepo que pueden quedar al alternar ramas locales.
+/edge/
+/server/

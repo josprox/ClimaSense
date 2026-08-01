@@ -1,0 +1,16 @@
+[Unit]
+Description=ClimaSense Edge telemetry service
+After=climasense-network.service climasense-activation.service
+ConditionPathExists=/data/climasense/device.token
+
+[Service]
+User=climasense
+Group=climasense
+ExecCondition=/usr/local/lib/climasense/activation-ready
+WorkingDirectory=/opt/climasense/edge
+ExecStart=/usr/local/bin/joss run service.joss
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

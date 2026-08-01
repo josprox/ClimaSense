@@ -1,25 +1,31 @@
-# ClimaSense AI
+# ClimaSense Edge
 
-ClimaSense AI es una plataforma SaaS multiempresa para Raspberry Pi Zero 2 W y BMP280, escrita principalmente en Joss. Incluye panel administrativo, portal por empresa, multiples ubicaciones, activacion de dispositivos, telemetria WebSocket, clima exterior y recomendaciones ambientales cada diez minutos. I2C, BMP280, cliente WebSocket y criptografia viven en plugins JP v2 escritos en Go porque esas capacidades no existen en Joss 3.6.1.
+Esta rama contiene únicamente el agente Edge de ClimaSense para Raspberry Pi OS Lite de 64 bits. Incluye el portal cautivo, activación web, hotspot protegido de mantenimiento, selección dinámica del adaptador Wi-Fi USB, cola local de telemetría y lectura BMP280/BME280 por I2C. Requiere Joss 3.6.3 o posterior.
 
-El flujo operativo es: el administrador crea la empresa y un codigo de compra; el Edge solicita Wi-Fi y ese codigo durante el primer arranque; el servidor lo vincula a la empresa; el cliente asigna una ubicacion y rango termico; finalmente el motor `climasense-context-v1` compara las muestras interiores con Open-Meteo y genera una recomendacion explicable.
+La instalación recomendada parte de Raspberry Pi Imager. Raspberry Pi Connect o una conexión existente pueden conservarse durante la instalación; después del reinicio, ClimaSense abre temporalmente el hotspot de configuración y no solicita credenciales en la consola.
 
-## Construccion
+## Construcción
 
-En Linux o WSL:
+En Linux o WSL, usando una copia local de Joss-language:
 
 ```sh
 export JOSS_SOURCE=/ruta/de/solo/lectura/Joss-language
 ./scripts/bootstrap.sh
 ./scripts/build-runtime.sh
 ./scripts/build-plugins.sh
-./scripts/build-edge.sh
-./scripts/build-server.sh
 ./scripts/test.sh
-./scripts/build-os.sh
+./scripts/build-raspios-bundle.sh
 ./scripts/manifest.sh
 ```
 
-`build-os.sh` usa Buildroot 2025.02.16 LTS y produce `dist/climasense-os-rpi-zero-2-w.img`. La imagen fue construida y auditada estructuralmente; el arranque y los perifericos en hardware real todavia no han sido validados. Consulta `docs/IMPLEMENTATION_STATUS.md`.
+El paquete resultante es `dist/climasense-raspios-installer.tar.gz`. En la Raspberry Pi:
 
-Nunca copie `env.example` sin sustituir credenciales mediante un canal seguro. Los tokens no deben entrar al repositorio. El primer administrador se crea en `/setup` con `SAAS_BOOTSTRAP_KEY` (o `APP_KEY` como fallback de primera instalacion).
+```sh
+tar -xzf climasense-raspios-installer.tar.gz
+sudo sh os/raspios/install.sh
+sudo reboot
+```
+
+El instalador conserva `/data/climasense/.env` y el token del dispositivo durante actualizaciones. Para cableado, diagnóstico y recuperación consulta `docs/RASPBERRY_PI_OS.md`, `docs/I2C.md` y `docs/TROUBLESHOOTING.md`. Buildroot permanece sólo como ruta heredada; no es la opción recomendada para hardware con Wi-Fi USB.
+
+No subas `.env`, tokens, bases SQLite, bitácoras ni paquetes `.jp` generados. Las redes WPA/WPA2 personales requieren contraseñas de 8 a 63 caracteres; una clave como `u3b6Fthb` sí es válida.

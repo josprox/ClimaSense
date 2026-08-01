@@ -1,0 +1,25 @@
+#!/bin/sh
+set -eu
+
+chip="${CLIMASENSE_MAINTENANCE_GPIO_CHIP:-gpiochip0}"
+line="${CLIMASENSE_MAINTENANCE_GPIO_OFFSET:-17}"
+active() { /usr/local/lib/climasense/activation-ready; }
+
+if gpioget --help 2>&1 | grep -q -- '--numeric'; then
+  read_button() { gpioget -c "$chip" --numeric --bias pull-up "$line" 2>/dev/null || echo 1; }
+else
+  read_button() { gpioget "$chip" "$line" 2>/dev/null || echo 1; }
+fi
+
+while true; do
+  if active && [ "$(read_button)" = 0 ]; then
+    held=0
+    while [ "$(read_button)" = 0 ] && [ "$held" -lt 5 ]; do sleep 1; held=$((held + 1)); done
+    if [ "$held" -ge 5 ]; then
+      echo "ClimaSense: iniciando hotspot USB de mantenimiento"
+      /usr/local/lib/climasense/onboarding maintenance
+      while [ "$(read_button)" = 0 ]; do sleep 1; done
+    fi
+  fi
+  sleep 1
+done

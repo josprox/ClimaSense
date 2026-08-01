@@ -1,0 +1,47 @@
+#!/bin/sh
+set -eu
+
+mode="${1:-any}"
+runtime_file=/run/climasense-wifi.interface
+data_file=/data/climasense/wifi.interface
+
+is_wifi() { [ -d "/sys/class/net/$1/wireless" ] || iw dev "$1" info >/dev/null 2>&1; }
+supports_ap() {
+  phy="$(basename "$(readlink -f "/sys/class/net/$1/phy80211" 2>/dev/null || true)")"
+  [ -n "$phy" ] && iw phy "$phy" info 2>/dev/null | grep -q '^[[:space:]]*\* AP$'
+}
+usable() { is_wifi "$1" && { [ "$mode" != ap ] || supports_ap "$1"; }; }
+
+configured="${CLIMASENSE_WIFI_INTERFACE:-}"
+[ -n "$configured" ] || configured="$(cat "$data_file" 2>/dev/null || true)"
+if [ -n "$configured" ] && usable "$configured"; then
+  selected="$configured"
+else
+  selected=""
+  fallback=""
+  for path in /sys/class/net/*; do
+    iface="$(basename "$path")"
+    is_wifi "$iface" || continue
+    if [ -z "$fallback" ] && { [ "$mode" != ap ] || supports_ap "$iface"; }; then
+      fallback="$iface"
+    fi
+    device_path="$(readlink -f "$path/device" 2>/dev/null || true)"
+    case "$device_path" in
+      *usb*)
+        [ "$mode" != ap ] || supports_ap "$iface" || continue
+        selected="$iface"
+        break
+        ;;
+    esac
+  done
+  [ -n "$selected" ] || selected="$fallback"
+fi
+
+[ -n "$selected" ] || { echo "No se encontro una interfaz Wi-Fi compatible con modo $mode" >&2; exit 1; }
+printf '%s\n' "$selected" > "$runtime_file"
+if [ "$(id -u)" = 0 ]; then
+  install -d -m 0750 /data/climasense
+  printf '%s\n' "$selected" > "$data_file"
+  chmod 0644 "$data_file"
+fi
+printf '%s\n' "$selected"

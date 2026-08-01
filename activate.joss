@@ -2,29 +2,34 @@ $token_path = System::env("DEVICE_TOKEN_FILE", System::env("CLIMASENSE_TOKEN_FIL
 $env_path = System::env("CLIMASENSE_ENV_FILE", "/data/climasense/.env")
 $activation_code = System::env("CLIMASENSE_ACTIVATION_CODE", System::env("ACTIVATION_CODE", ""))
 
-(empty($activation_code) == true && file_exists("/data/climasense/activation.code") == true) ? {
-    $activation_code = trim(file_get_contents("/data/climasense/activation.code"))
+$saved_activation_code = Str::trim(file_get_contents("/data/climasense/activation.code"))
+(empty($activation_code) == true && empty($saved_activation_code) == false) ? {
+    $activation_code = $saved_activation_code
 } : {}
 
-(empty($activation_code) == true && file_exists("/boot/climasense-activation.txt") == true) ? {
-    $activation_code = trim(file_get_contents("/boot/climasense-activation.txt"))
+$boot_activation_code = Str::trim(file_get_contents("/boot/climasense-activation.txt"))
+(empty($activation_code) == true && empty($boot_activation_code) == false) ? {
+    $activation_code = $boot_activation_code
 } : {}
 
 empty($activation_code) ? { throw "Falta el codigo de activacion (CLIMASENSE_ACTIVATION_CODE o /data/climasense/activation.code)" } : {}
 
 $hardware_id = System::env("CLIMASENSE_HARDWARE_ID", System::env("HARDWARE_ID", ""))
-(empty($hardware_id) == true && file_exists("/sys/class/net/wlan0/address") == true) ? {
-    $hardware_id = "rpi-wlan-" . trim(file_get_contents("/sys/class/net/wlan0/address"))
+$cpu_serial = Str::trim(System::Run("/bin/sh", ["-c", "sed -n 's/^Serial[[:space:]]*:[[:space:]]*//p' /proc/cpuinfo | tail -n 1"]))
+(empty($hardware_id) == true && empty($cpu_serial) == false) ? {
+    $hardware_id = "rpi-serial-" . $cpu_serial
 } : {}
-(empty($hardware_id) == true && file_exists("/sys/class/net/eth0/address") == true) ? {
-    $hardware_id = "rpi-eth-" . trim(file_get_contents("/sys/class/net/eth0/address"))
+$eth_address = Str::trim(file_get_contents("/sys/class/net/eth0/address"))
+(empty($hardware_id) == true && empty($eth_address) == false) ? {
+    $hardware_id = "rpi-eth-" . $eth_address
 } : {}
 empty($hardware_id) ? { $hardware_id = "climasense-edge-hw-" . System::now() } : {}
 
 $device_name = System::env("CLIMASENSE_DEVICE_NAME", System::env("DEVICE_NAME", "ClimaSense Edge"))
-$base_url = System::env("SERVER_BASE_URL", "http://127.0.0.1:8080")
+$base_url = System::env("SERVER_BASE_URL", "https://climasense.joss.red")
 $activation_path = System::env("SERVER_ACTIVATION_PATH", "/api/v1/edge/activate")
-$timeout_seconds = System::env("SERVER_TIMEOUT_SECONDS", "15")
+$timeout_raw = System::env("SERVER_TIMEOUT_SECONDS", "")
+$timeout_seconds = empty($timeout_raw) ? 15 : JSON::parse($timeout_raw)
 
 $response = ClimaSenseTransport::activate($base_url, $activation_path, $activation_code, $hardware_id, $device_name, $timeout_seconds)
 ($response["ok"] == true) ? {} : { throw "El servidor rechazo la activacion" }
@@ -36,11 +41,16 @@ $existing_env = file_get_contents($env_path)
     $existing_env = ""
 } : {}
 
-$updated_env = $existing_env . "\nDEVICE_ID=\"" . $response["device_id"] . "\"\nHARDWARE_ID=\"" . $hardware_id . "\"\n"
+$clean_env = ""
+$env_lines = explode("\n", $existing_env)
+foreach ($env_lines as $env_line) {
+    (Str::contains($env_line, "DEVICE_ID=") || Str::contains($env_line, "HARDWARE_ID=")) ? {} : {
+        $clean_env = $clean_env . $env_line . "\n"
+    }
+}
+$updated_env = $clean_env . "DEVICE_ID=\"" . $response["device_id"] . "\"\nHARDWARE_ID=\"" . $hardware_id . "\"\n"
 file_put_contents($env_path, $updated_env)
 
-(file_exists("/data/climasense/activation.code") == true) ? {
-    unlink("/data/climasense/activation.code")
-} : {}
+System::Run("rm", ["-f", "/data/climasense/activation.code"])
 
 print("climasense-activation-ok")

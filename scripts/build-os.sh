@@ -22,13 +22,13 @@ if [ ! -d "$source" ]; then
 fi
 
 rm -rf "$source/board/climasense"
-mkdir -p "$source/board/climasense/artifacts/edge" "$source/board/climasense/artifacts/plugins/climasense_hardware/0.1.0" "$source/board/climasense/artifacts/plugins/climasense_transport/0.2.0"
+mkdir -p "$source/board/climasense/artifacts/edge" "$source/board/climasense/artifacts/plugins/climasense_hardware/0.1.1" "$source/board/climasense/artifacts/plugins/climasense_transport/0.2.0"
 cp -R "$root/os/buildroot/board/." "$source/board/climasense/"
 chmod +x "$source/board/climasense/post-build.sh" "$source/board/climasense/rootfs-overlay/etc/init.d/"S*
 cp "$root/dist/joss-linux-arm64" "$source/board/climasense/artifacts/joss-linux-arm64"
-cp -R "$root/edge/src" "$root/edge/main.joss" "$root/edge/activate.joss" "$root/edge/joss.yaml" "$source/board/climasense/artifacts/edge/"
-cp "$root/edge/env.example" "$source/board/climasense/artifacts/env.example"
-cp "$root/dist/plugins/climasense_hardware.jp" "$source/board/climasense/artifacts/plugins/climasense_hardware/0.1.0/climasense_hardware.jp"
+cp -R "$root/src" "$root/main.joss" "$root/onboarding.joss" "$root/activate.joss" "$root/joss.yaml" "$source/board/climasense/artifacts/edge/"
+cp "$root/env.example" "$source/board/climasense/artifacts/env.example"
+cp "$root/dist/plugins/climasense_hardware.jp" "$source/board/climasense/artifacts/plugins/climasense_hardware/0.1.1/climasense_hardware.jp"
 cp "$root/dist/plugins/climasense_transport.jp" "$source/board/climasense/artifacts/plugins/climasense_transport/0.2.0/climasense_transport.jp"
 
 make -C "$source" raspberrypizero2w_64_defconfig

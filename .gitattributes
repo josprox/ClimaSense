@@ -1,0 +1,2 @@
+*.sh text eol=lf
+os/raspios/libexec/* text eol=lf

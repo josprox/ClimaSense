@@ -4,97 +4,132 @@ class OnboardingController {
         return View::render("onboarding", {"server_url": $server_url})
     }
 
+    func setupStatus() {
+        $activated = false
+        $token_path = System::env("DEVICE_TOKEN_FILE", "/data/climasense/device.token")
+        $token = Str::trim(file_get_contents($token_path))
+        (empty($token) == false) ? {
+            $activated = true
+        } : {}
+
+        $ap_ssid = "ClimaSense Mantenimiento"
+        $saved_ssid = Str::trim(file_get_contents("/data/climasense/maintenance-ap.ssid"))
+        (empty($saved_ssid) == false) ? { $ap_ssid = $saved_ssid } : {}
+        $hostapd_config = Str::trim(file_get_contents("/data/climasense/hostapd.conf"))
+
+        return ApiResponse::json({
+            "ok": true,
+            "activated": $activated,
+            "maintenance_ap_configured": empty($hostapd_config) == false,
+            "maintenance_ap_ssid": $ap_ssid
+        }, 200)
+    }
+
     func scanWifi() {
         $networks = []
         try {
-            $output = System::exec("wpa_cli -i wlan0 scan_results 2>/dev/null || iwlist wlan0 scan 2>/dev/null")
-            $lines = Str::split($output, "\n")
+            $output = System::Run("/bin/sh", ["-c", "iface=$(cat /run/climasense-wifi.interface 2>/dev/null); [ -n \"$iface\" ] && iwlist \"$iface\" scan 2>/dev/null | sed -n 's/.*ESSID:\"\\(.*\\)\"/\\1/p'"])
+            $lines = explode("\n", $output)
             foreach ($lines as $line) {
-                (strings::contains($line, "ESSID:") == true) ? {
-                    $parts = Str::split($line, "ESSID:\"")
-                    (count($parts) >= 2) ? {
-                        $ssid = Str::replace($parts[1], "\"", "")
-                        (empty($ssid) == false) ? {
-                            $networks = append($networks, {"ssid": $ssid, "signal": "Excelente"})
-                        } : {}
-                    } : {}
+                $ssid = Str::trim($line)
+                (empty($ssid) == false) ? {
+                    $networks = append($networks, {"ssid": $ssid, "signal": "Detectada"})
                 } : {}
             }
         } catch ($e) {}
-
-        (count($networks) == 0) ? {
-            $networks = [
-                {"ssid": "Wi-Fi Oficina Principal", "signal": "Fuerte"},
-                {"ssid": "Wi-Fi Servidores", "signal": "Excelente"}
-            ]
-        } : {}
 
         return ApiResponse::json({"ok": true, "networks": $networks}, 200)
     }
 
     func connectWifi() {
-        $ssid = Request::input("ssid", "")
+        $ssid = Str::trim(Request::input("ssid", ""))
         $password = Request::input("password", "")
         (empty($ssid) == true) ? { return ApiResponse::error("El SSID es obligatorio", 422) } : {}
+        (Str::length($ssid) > 32) ? { return ApiResponse::error("El SSID no puede exceder 32 caracteres", 422) } : {}
+        (Str::contains($ssid, "\n") || Str::contains($ssid, "\r") || Str::contains($password, "\n") || Str::contains($password, "\r")) ? {
+            return ApiResponse::error("El SSID y la contrasena no pueden contener saltos de linea", 422)
+        } : {}
+        (Str::length($password) < 8 || Str::length($password) > 63) ? {
+            return ApiResponse::error("La contrasena Wi-Fi debe tener entre 8 y 63 caracteres", 422)
+        } : {}
 
-        $env_path = System::env("CLIMASENSE_ENV_FILE", "/data/climasense/.env")
-        $existing_env = file_get_contents($env_path)
-        (empty($existing_env) == true) ? { $existing_env = "" } : {}
+        $generated_network = System::Run("wpa_passphrase", [$ssid, $password])
+        (empty($generated_network) == true) ? {
+            return ApiResponse::error("No se pudo proteger la configuracion Wi-Fi", 500)
+        } : {}
 
-        $updated_env = $existing_env . "\nWIFI_SSID=\"" . $ssid . "\"\nWIFI_PASSWORD=\"" . $password . "\"\n"
-        file_put_contents($env_path, $updated_env)
+        $wpa_conf = "ctrl_interface=/run/wpa_supplicant\nupdate_config=0\ncountry=MX\n\n"
+        $network_lines = explode("\n", $generated_network)
+        foreach ($network_lines as $network_line) {
+            (Str::contains($network_line, "#psk=") == false) ? {
+                $wpa_conf = $wpa_conf . $network_line . "\n"
+            } : {}
+        }
+        file_put_contents("/data/climasense/wpa_supplicant.conf", $wpa_conf)
+        System::Run("chmod", ["0600", "/data/climasense/wpa_supplicant.conf"])
 
-        try {
-            System::exec("wpa_cli -i wlan0 add_network 2>/dev/null")
-            System::exec("wpa_cli -i wlan0 set_network 0 ssid '\"" . $ssid . "\"' 2>/dev/null")
-            System::exec("wpa_cli -i wlan0 set_network 0 psk '\"" . $password . "\"' 2>/dev/null")
-            System::exec("wpa_cli -i wlan0 select_network 0 2>/dev/null")
-        } catch ($e) {}
-
-        return ApiResponse::json({"ok": true, "message": "Wi-Fi configurado correctamente"}, 200)
+        return ApiResponse::json({"ok": true, "message": "Wi-Fi guardado. Ingrese ahora el codigo de activacion."}, 200)
     }
 
-    func activateDevice() {
-        $code = Request::input("code", "")
-        $server_url = Request::input("server_url", System::env("SERVER_BASE_URL", "http://127.0.0.1:8080"))
-        (empty($code) == true) ? { return ApiResponse::error("El codigo de activacion es obligatorio", 422) } : {}
 
-        $hardware_id = System::env("CLIMASENSE_HARDWARE_ID", System::env("HARDWARE_ID", ""))
-        (empty($hardware_id) == true && file_exists("/sys/class/net/wlan0/address") == true) ? {
-            $hardware_id = "rpi-wlan-" . trim(file_get_contents("/sys/class/net/wlan0/address"))
+    func completeSetup() {
+        $code = Str::trim(Request::input("code", ""))
+        $ap_ssid = Str::trim(Request::input("ap_ssid", ""))
+        $ap_pass = Request::input("ap_pass", "")
+        $wifi_config = Str::trim(file_get_contents("/data/climasense/wpa_supplicant.conf"))
+        (empty($wifi_config) == true) ? {
+            return ApiResponse::error("Primero configure la red Wi-Fi", 409)
         } : {}
-        empty($hardware_id) ? { $hardware_id = "rpi-edge-" . System::now() } : {}
-
-        $device_name = System::env("DEVICE_NAME", "ClimaSense Edge")
-        $activation_path = System::env("SERVER_ACTIVATION_PATH", "/api/v1/edge/activate")
-
-        $res = ClimaSenseTransport::activate($server_url, $activation_path, $code, $hardware_id, $device_name, "15")
-        ($res["ok"] == true) ? {} : { return ApiResponse::error("El servidor rechazo la activacion", 400) }
 
         $token_path = System::env("DEVICE_TOKEN_FILE", "/data/climasense/device.token")
-        file_put_contents($token_path, $res["device_token"])
+        $activated = false
+        $token = Str::trim(file_get_contents($token_path))
+        (empty($token) == false) ? {
+            $activated = true
+        } : {}
 
-        $env_path = System::env("CLIMASENSE_ENV_FILE", "/data/climasense/.env")
-        $existing_env = file_get_contents($env_path)
-        (empty($existing_env) == true) ? { $existing_env = "" } : {}
+        (empty($ap_ssid) == true) ? {
+            $ap_ssid = Str::trim(file_get_contents("/data/climasense/maintenance-ap.ssid"))
+        } : {}
+        (empty($ap_pass) == true) ? {
+            $ap_pass = file_get_contents("/data/climasense/maintenance-ap.pass")
+        } : {}
 
-        $updated_env = $existing_env . "\nDEVICE_ID=\"" . $res["device_id"] . "\"\nHARDWARE_ID=\"" . $hardware_id . "\"\nSERVER_BASE_URL=\"" . $server_url . "\"\n"
-        file_put_contents($env_path, $updated_env)
+        (empty($ap_ssid) == true) ? { return ApiResponse::error("El nombre del hotspot es obligatorio", 422) } : {}
+        (Str::length($ap_ssid) > 32) ? { return ApiResponse::error("El nombre del hotspot no puede exceder 32 caracteres", 422) } : {}
+        (empty($ap_pass) == true) ? { return ApiResponse::error("La contrasena del hotspot es obligatoria", 422) } : {}
+        (Str::length($ap_pass) < 8 || Str::length($ap_pass) > 63) ? {
+            return ApiResponse::error("La contrasena del hotspot debe tener entre 8 y 63 caracteres", 422)
+        } : {}
+        (Str::contains($ap_ssid, "\n") || Str::contains($ap_ssid, "\r") || Str::contains($ap_pass, "\n") || Str::contains($ap_pass, "\r")) ? {
+            return ApiResponse::error("El nombre y la contrasena no pueden contener saltos de linea", 422)
+        } : {}
+        ($activated == false && empty($code) == true) ? {
+            return ApiResponse::error("El codigo de activacion es obligatorio", 422)
+        } : {}
+        (Str::length($code) > 128 || Str::contains($code, "\n") || Str::contains($code, "\r")) ? {
+            return ApiResponse::error("El codigo de activacion no es valido", 422)
+        } : {}
 
-        return ApiResponse::json({"ok": true, "device_id": $res["device_id"]}, 200)
-    }
+        $hostapd_conf = "driver=nl80211\ncountry_code=MX\nssid=" . $ap_ssid . "\nhw_mode=g\nchannel=6\nmacaddr_acl=0\nauth_algs=1\nignore_broadcast_ssid=0\nwpa=2\nwpa_passphrase=" . $ap_pass . "\nwpa_key_mgmt=WPA-PSK\nrsn_pairwise=CCMP\n"
 
-    func configAP() {
-        $ap_ssid = Request::input("ap_ssid", "Configuración ClimaSense")
-        $ap_pass = Request::input("ap_pass", "climasense123")
+        file_put_contents("/data/climasense/hostapd.conf", $hostapd_conf)
+        file_put_contents("/data/climasense/maintenance-ap.ssid", $ap_ssid . "\n")
+        file_put_contents("/data/climasense/maintenance-ap.pass", $ap_pass)
+        System::Run("chmod", ["0600", "/data/climasense/hostapd.conf", "/data/climasense/maintenance-ap.ssid", "/data/climasense/maintenance-ap.pass"])
 
-        $env_path = System::env("CLIMASENSE_ENV_FILE", "/data/climasense/.env")
-        $existing_env = file_get_contents($env_path)
-        (empty($existing_env) == true) ? { $existing_env = "" } : {}
+        ($activated == true) ? {
+            file_put_contents("/data/climasense/maintenance.complete", "1\n")
+            System::Run("chmod", ["0600", "/data/climasense/maintenance.complete"])
+        } : {
+            file_put_contents("/data/climasense/activation.code", $code . "\n")
+            System::Run("chmod", ["0600", "/data/climasense/activation.code"])
+        }
 
-        $updated_env = $existing_env . "\nFALLBACK_AP_SSID=\"" . $ap_ssid . "\"\nFALLBACK_AP_PASS=\"" . $ap_pass . "\"\nONBOARDING_COMPLETED=\"true\"\n"
-        file_put_contents($env_path, $updated_env)
-
-        return ApiResponse::json({"ok": true, "message": "Punto de acceso de mantenimiento configurado"}, 200)
+        return ApiResponse::json({
+            "ok": true,
+            "maintenance": $activated,
+            "message": "Configuracion guardada. El hotspot se apagara y el equipo volvera a conectarse."
+        }, 202)
     }
 }

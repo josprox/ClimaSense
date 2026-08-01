@@ -1,0 +1,40 @@
+#!/bin/sh
+set -eu
+data=/data/climasense
+log="$data/network.log"
+pidfile=/run/climasense-wpa_supplicant.pid
+mode="${1:-start}"
+stop() {
+  if [ -s "$pidfile" ]; then
+    supplicant_pid="$(cat "$pidfile")"
+    kill "$supplicant_pid" 2>/dev/null || true
+    rm -f "$pidfile"
+  fi
+}
+[ "$mode" = stop ] && { stop; exit 0; }
+[ -s "$data/onboarding.failed" ] && exit 0
+[ -s "$data/wpa_supplicant.conf" ] || exit 0
+iface="$(/usr/local/lib/climasense/wifi-interface any)"
+mkdir -p "$data"; touch "$log"; chmod 0600 "$log"
+exec >>"$log" 2>&1
+echo "ClimaSense: conectando $iface como cliente Wi-Fi"
+command -v rfkill >/dev/null 2>&1 && rfkill unblock wifi || true
+pkill hostapd 2>/dev/null || true
+pkill dnsmasq 2>/dev/null || true
+stop
+ip addr flush dev "$iface" || true
+install -m 0600 "$data/wpa_supplicant.conf" /etc/wpa_supplicant/wpa_supplicant.conf
+wpa_supplicant -B -P "$pidfile" -i "$iface" -c /etc/wpa_supplicant/wpa_supplicant.conf
+attempts=0
+while [ "$attempts" -lt 30 ]; do
+  iw dev "$iface" link 2>/dev/null | grep -q '^Connected to ' && break
+  sleep 1
+  attempts=$((attempts + 1))
+done
+iw dev "$iface" link 2>/dev/null | grep -q '^Connected to ' || {
+  echo "ClimaSense ERROR: $iface no se asocio al Wi-Fi guardado"
+  exit 1
+}
+timeout 45 dhclient -4 -1 -v "$iface"
+ip -4 addr show dev "$iface" | grep -q 'inet '
+echo "ClimaSense: $iface conectado correctamente"

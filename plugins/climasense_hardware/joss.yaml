@@ -1,6 +1,6 @@
 name: climasense_hardware
-version: 0.1.0
-description: Acceso I2C y driver BMP280 para ClimaSense AI
+version: 0.1.1
+description: Acceso I2C y driver BMP280/BME280 para ClimaSense AI
 license: MIT
 type: joss
 environment:
