@@ -1,0 +1,9 @@
+import "app/LiveUpdate.joss"
+
+$message = JSON::parse(LiveUpdate::payload("telemetry"))
+($message["type"] == "refresh") ? {} : { throw "Tipo de evento en vivo invalido" }
+($message["resource"] == "telemetry") ? {} : { throw "Recurso de evento en vivo invalido" }
+$generated_at = $message["generated_at"]
+(empty($generated_at) == false) ? {} : { throw "Evento en vivo sin fecha" }
+
+print("server-live-payload-ok")

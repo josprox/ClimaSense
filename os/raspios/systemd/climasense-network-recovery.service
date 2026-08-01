@@ -1,0 +1,6 @@
+[Unit]
+Description=ClimaSense hotspot recovery after Wi-Fi failure
+
+[Service]
+Type=simple
+ExecStart=/usr/local/lib/climasense/onboarding recovery

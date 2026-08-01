@@ -1,32 +1,34 @@
 # Estado de implementacion
 
+Actualizado tras la migracion y prueba fisica en Raspberry Pi OS.
+
 | Componente | Estado | Evidencia |
 |---|---|---|
-| Inspeccion Joss 3.6.1 | IMPLEMENTADO Y PROBADO | Los 20 documentos de `Joss-language/docs` y los contratos ejecutables relevantes fueron revisados; baseline registrado |
-| Plugin I2C Linux | IMPLEMENTADO, PENDIENTE DE PRUEBA EN HARDWARE | Compila linux/arm64 sin CGO; ioctl, timeout, reintentos y cierre |
-| Driver BMP280 | IMPLEMENTADO, PENDIENTE DE PRUEBA EN HARDWARE | Vector de compensacion y errores probados |
-| Cola Edge SQLite | IMPLEMENTADO Y PROBADO | Persistencia, orden, idempotencia y ACK WebSocket por dispositivo probados en Windows |
-| Onboarding Edge | IMPLEMENTADO, PENDIENTE DE PRUEBA EN HARDWARE | Portal web solicita Wi-Fi, activacion y hotspot WPA2 sin consola; GPIO17 habilita mantenimiento temporal; serial ligado al codigo |
-| Edge completo | PARCIAL | Ciclo Joss y WebSocket funcionales; workers concurrentes, heartbeat/config remota pendientes |
-| Seguridad de aplicacion | IMPLEMENTADO Y PROBADO | HMAC, replay temporal y comparacion constante probados; transporte configurado deliberadamente como HTTP sin TLS |
-| SaaS multiempresa | IMPLEMENTADO Y PROBADO | Admin, clientes, organizaciones, ubicaciones, JWT/roles, activacion, aislamiento por empresa y paneles verificados |
-| Telemetria WebSocket | IMPLEMENTADO Y PROBADO | Envelope HMAC, replay, persistencia, duplicados y ACK `accepted_through` recorridos E2E |
-| Inteligencia ambiental | IMPLEMENTADO Y PROBADO | Cron de 10 minutos, rango por ubicacion, 20 muestras, Open-Meteo, fallback y recomendacion explicable |
-| Servidor Joss | OPERATIVO | 28 rutas HTTP/WS, SQLite y PostgreSQL real probados; panel admin y tenant revisados visualmente |
-| OTA | NO INICIADO | Solo modelo y endpoint de consulta |
-| Buildroot | IMPLEMENTADO Y PROBADO EN BUILD | Buildroot 2025.02.16 completo en WSL; kernel 6.6.28-v8, DTB Zero 2 W, Wi-Fi Broadcom, I2C y BMP280 compilados |
-| Imagen `.img` | IMPLEMENTADA, PENDIENTE DE PRUEBA EN HARDWARE | SHA-256, MBR, FAT32, ext4 y `e2fsck` verificados; Joss, Edge, JP, firmware Wi-Fi, permisos y servicios auditados dentro de la imagen |
+| Runtime Joss | IMPLEMENTADO Y PROBADO | Servidor fijado a Joss `>=3.6.3`; suite y canales WebSocket ejecutados con 3.6.3 compilado desde el repositorio indicado |
+| Plugin I2C Linux | IMPLEMENTADO Y PROBADO EN HARDWARE | `/dev/i2c-1` operativo y dispositivo detectado en `0x76` |
+| Driver BMP280/BME280 | IMPLEMENTADO Y PROBADO | Vectores, errores y chip IDs `0x58`/`0x60` cubiertos; BME280 fisico leido correctamente |
+| Cola Edge SQLite | IMPLEMENTADO Y PROBADO | WAL, orden, idempotencia, retencion y eliminacion posterior al ACK |
+| Onboarding Edge | IMPLEMENTADO | Portal sin consola, Wi-Fi, activacion, hotspot WPA2 y recuperacion systemd incluidos |
+| Interfaz Wi-Fi USB | IMPLEMENTADO Y PROBADO EN HARDWARE | Seleccion dinamica de interfaz con modo AP; el equipo probado opera con USB por fallo del radio integrado |
+| Edge completo | OPERATIVO | Activacion completada, medicion almacenada y lote sincronizado (`sent:1`) en Raspberry Pi OS |
+| Seguridad de dispositivo | IMPLEMENTADO Y PROBADO | HMAC, ventana temporal, nonce, comparacion constante, token individual y ACK por dispositivo |
+| SaaS multiempresa | IMPLEMENTADO Y PROBADO | Roles, organizaciones, ubicaciones, activacion y aislamiento por membresia |
+| Paneles en vivo | IMPLEMENTADO Y PROBADO E2E | JWT en primer mensaje, canales admin/usuario/empresa, evento HTTP→WS, reconexion y fallback |
+| Inteligencia ambiental | IMPLEMENTADO Y PROBADO | Cron, muestras recientes, Open-Meteo/fallback y recomendacion contextual explicable |
+| Raspberry Pi OS | RUTA SOPORTADA | Instalador idempotente, servicios systemd, I2C/GPIO, rescate de red y bundle con checksum |
+| Buildroot | LEGACY | Conservado para referencia; no es la ruta recomendada ni resuelve el radio fisicamente defectuoso |
+| OTA | NO IMPLEMENTADO | El instalador puede reaplicarse conservando datos, pero aun no existen firma, health check ni rollback OTA |
 
-## Linea base del runtime
+## Contratos relevantes de Joss
 
-El repositorio Joss original no fue modificado. `go test ./...` en la copia de consulta ejecuto correctamente todos los paquetes salvo `cmd/joss`, que en esa copia clonada carecia de `cmd/joss/runner_windows.exe`. El repositorio indicado por el usuario si contiene ese artefacto y permitio compilar el runtime ARM64 externamente.
+- Los paneles requieren Joss 3.6.3 porque `subscribe`, `publish`, `subscriberCount`, `onClose` y la publicacion desde handlers HTTP no estan disponibles en el binario 3.6.1 instalado previamente.
+- El upgrade WebSocket ocurre antes del middleware HTTP. `/ws/dashboard` recibe el JWT como primer mensaje y llama `Auth::validateToken`; `/ws/edge` conserva su autenticacion HMAC propia.
+- Los canales WebSocket son locales al proceso. El despliegue en vivo debe usar una replica hasta incorporar un backplane pub/sub.
+- `ApiResponse` sigue usando `Response::raw` para conservar codigos HTTP reales en los runtimes compatibles usados por el proyecto.
+- Las variables numericas del entorno se convierten mediante `JSON::parse`; se evita depender de coerciones implicitas entre cadenas y enteros.
 
-Joss 3.6.1 crea `Response::json` y `Response::error` con el campo interno `status_code`, pero su dispatcher HTTP JSON consulta `status`. ClimaSense no modifica el runtime: `ApiResponse` serializa JSON mediante `Response::raw`, cuyo dispatcher si conserva `status_code`. Se comprobaron respuestas reales `401 Unauthorized` para acceso operador y provisionamiento sin credencial.
+## Validacion ejecutada
 
-En el mismo runtime, `empty()` comprueba correctamente identificadores, pero considera inexistente una expresion de indice de mapa o una llamada. ClimaSense asigna primero esos resultados a variables y aplica `empty()` sobre la variable. La carga del JSON Edge se ejecuta en pruebas para impedir regresiones de este contrato.
+`scripts/test.sh` pasa con Joss 3.6.3 e incluye Go test/vet, RPC de plugins, configuracion y cola Edge, migraciones, indices, rutas, codigos HTTP y una prueba real que inicia sesion, autentica `/ws/dashboard`, realiza una mutacion HTTP y recibe el evento `refresh`.
 
-Los callbacks anonimos de `WebSocket::onMessage` no conservan `$ws` en Joss 3.6.1. ClimaSense registra un metodo ligado (`$this->handleMessage`) y guarda la conexion en la instancia del controlador; asi el ACK se envia por el mismo socket sin modificar el runtime.
-
-Joss 3.6.1 traduce `double()` como `DOUBLE`, tipo no aceptado por PostgreSQL, y puede registrar la migracion aunque falle la creacion. ClimaSense usa `DECIMAL(14,4)` para las magnitudes del sensor e incluye migraciones compensatorias que completan instalaciones parciales sin borrar datos.
-
-No se ha medido RAM en hardware. La imagen previa mide 288 MiB; debe regenerarse con el plugin 0.2.0 antes de grabar hardware. Falta validar el asistente, Wi-Fi, I2C/BMP280, watchdog y consumo real en una Pi Zero 2 W fisica.
+En la Raspberry Pi se confirmo BME280 en `0x76`, activacion persistente, servicio Edge activo, `Medicion almacenada: secuencia=1` y `Sincronizacion: {"ok":true,"sent":1}`. Quedan como validaciones prolongadas el corte de energia, direccion `0x77`, recuperacion repetida de AP y mantenimiento por GPIO17 bajo fallos consecutivos.

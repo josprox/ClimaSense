@@ -85,7 +85,7 @@
     <div class="step-content" id="step-2">
       <label>2. Código de Activación de Producto</label>
       <p style="font-size:13px; color:var(--text-muted); margin-bottom:16px;">Ingresa el código que generaste desde tu portal de cliente en ClimaSense AI.</p>
-      <label>Código de Conexión<input id="activation-code" placeholder="Ej. CS-A1B2-C3D4-E5F6" style="text-transform:uppercase; font-weight:bold; letter-spacing:1px;"></label>
+      <label>Código de Conexión<input id="activation-code" maxlength="128" placeholder="Ej. CS-A1B2-C3D4-E5F6" style="text-transform:uppercase; font-weight:bold; letter-spacing:1px;"></label>
 
       <button type="button" class="btn" id="activate-btn">Vincular Dispositivo <span>→</span></button>
       <button type="button" class="btn btn-ghost" id="back-step-1">← Cambiar Wi-Fi</button>
@@ -152,12 +152,19 @@
             list.innerHTML = '<div class="wifi-item" style="justify-content:center; color:var(--text-muted);">No se encontraron redes Wi-Fi</div>';
             return;
           }
-          list.innerHTML = networks.map(n => `
-            <div class="wifi-item" data-ssid="${n.ssid}">
-              <strong>${n.ssid}</strong>
-              <span class="wifi-signal">${n.signal || 'Fuerte'}</span>
-            </div>
-          `).join('');
+          list.textContent = "";
+          networks.forEach(n => {
+            const item = document.createElement("div");
+            item.className = "wifi-item";
+            item.dataset.ssid = n.ssid;
+            const name = document.createElement("strong");
+            name.textContent = n.ssid;
+            const signal = document.createElement("span");
+            signal.className = "wifi-signal";
+            signal.textContent = n.signal || "Detectada";
+            item.append(name, signal);
+            list.appendChild(item);
+          });
           list.querySelectorAll(".wifi-item").forEach(item => {
             item.addEventListener("click", () => {
               $("wifi-ssid").value = item.dataset.ssid;

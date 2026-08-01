@@ -1,0 +1,12 @@
+[Unit]
+Description=ClimaSense GPIO17 maintenance button
+After=climasense-edge.service
+
+[Service]
+Type=simple
+ExecStart=/usr/local/lib/climasense/maintenance-button
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

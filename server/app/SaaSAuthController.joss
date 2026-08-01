@@ -1,4 +1,9 @@
 class SaaSAuthController {
+    func secureCookieSuffix() {
+        $configured = System::env("SESSION_COOKIE_SECURE", "true")
+        return ($configured == "true" || $configured == "TRUE" || $configured == "1") ? "; Secure" : ""
+    }
+
     func loginPage() {
         $token = Request::cookie("joss_token")
         (empty($token) == true) ? { return View::render("saas.login", {"title": "Acceso a ClimaSense"}) } : {}
@@ -33,8 +38,8 @@ class SaaSAuthController {
         GranDB::table("users")->where("email", $email)->update({"verificado": 1, "updated_at": System::now()})
 
         $token = Auth::attempt($email, $password)
-        $cookieHeader = "joss_token=" . $token . "; Path=/; HttpOnly; SameSite=Lax"
-        return ApiResponse::json({"ok": true, "message": "Cuenta creada con exito", "redirect": "/app"}, 201)->withHeader("Set-Cookie", $cookieHeader)->withCookie("joss_token", $token)
+        $cookieHeader = "joss_token=" . $token . "; Path=/; HttpOnly; SameSite=Lax" . SaaSAuthController::secureCookieSuffix()
+        return ApiResponse::json({"ok": true, "message": "Cuenta creada con exito", "redirect": "/app"}, 201)->withHeader("Set-Cookie", $cookieHeader)
     }
 
     func setupPage() {
@@ -48,14 +53,21 @@ class SaaSAuthController {
         $token = Auth::attempt($email, $password)
         ($token == false) ? { return ApiResponse::error("Credenciales invalidas", 401) } : {}
         $destination = (Auth::hasRole("admin") == true) ? "/admin" : "/app"
-        $cookieHeader = "joss_token=" . $token . "; Path=/; HttpOnly; SameSite=Lax"
-        return ApiResponse::json({"ok": true, "redirect": $destination}, 200)->withHeader("Set-Cookie", $cookieHeader)->withCookie("joss_token", $token)
+        $cookieHeader = "joss_token=" . $token . "; Path=/; HttpOnly; SameSite=Lax" . SaaSAuthController::secureCookieSuffix()
+        return ApiResponse::json({"ok": true, "redirect": $destination}, 200)->withHeader("Set-Cookie", $cookieHeader)
     }
 
     func logout() {
         Auth::logout()
-        $cookieHeader = "joss_token=; Path=/; HttpOnly; Max-Age=0"
-        return ApiResponse::json({"ok": true, "redirect": "/login"}, 200)->withHeader("Set-Cookie", $cookieHeader)->withCookie("joss_token", "")
+        $cookieHeader = "joss_token=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0" . SaaSAuthController::secureCookieSuffix()
+        return ApiResponse::json({"ok": true, "redirect": "/login"}, 200)->withHeader("Set-Cookie", $cookieHeader)
+    }
+
+    func websocketToken() {
+        try { SaaSAuth::userId() } catch ($error) { return ApiResponse::error("Sesion requerida", 401) }
+        $token = Request::cookie("joss_token")
+        (empty($token) == true) ? { return ApiResponse::error("Sesion WebSocket no disponible", 401) } : {}
+        return ApiResponse::json({"ok": true, "token": $token}, 200)->withHeader("Cache-Control", "no-store, private")
     }
 
     func bootstrapAdmin() {

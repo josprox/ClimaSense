@@ -9,19 +9,31 @@ class ActivationController {
 
         $device_id = UUID::v4()
         $token = ClimaSenseTransport::randomToken(32)
-        GranDB::table("devices")->insert({
-            "device_id": $device_id,
-            "organization_id": $record["organization_id"],
-            "hardware_id": $hardware_id,
-            "name": Request::input("name", "ClimaSense Edge"),
-            "location": "Sin asignar",
-            "status": "active",
-            "activation_status": "active",
-            "created_at": System::now(),
-            "updated_at": System::now()
-        })
-        GranDB::table("device_credentials")->insert({"device_id": $device_id, "token_hash": ClimaSenseTransport::hashToken($token), "revoked": false, "created_at": System::now()})
-        GranDB::table("activation_codes")->where("id", $record["id"])->update({"status": "claimed", "claimed_by_device": $device_id, "claimed_at": System::now()})
+        GranDB::table("activation_codes")->where("id", $record["id"])->where("status", "available")->update({"status": "claimed", "claimed_by_device": $device_id, "claimed_at": System::now()})
+        $claim = GranDB::table("activation_codes")->where("id", $record["id"])->where("status", "claimed")->where("claimed_by_device", $device_id)->first()
+        empty($claim) ? { return ApiResponse::error("El codigo fue utilizado por otra activacion", 409) } : {}
+
+        try {
+            GranDB::table("devices")->insert({
+                "device_id": $device_id,
+                "organization_id": $record["organization_id"],
+                "hardware_id": $hardware_id,
+                "name": Request::input("name", "ClimaSense Edge"),
+                "location": "Sin asignar",
+                "status": "active",
+                "activation_status": "active",
+                "created_at": System::now(),
+                "updated_at": System::now()
+            })
+            GranDB::table("device_credentials")->insert({"device_id": $device_id, "token_hash": ClimaSenseTransport::hashToken($token), "revoked": false, "created_at": System::now()})
+        } catch ($error) {
+            GranDB::table("device_credentials")->where("device_id", $device_id)->delete()
+            GranDB::table("devices")->where("device_id", $device_id)->delete()
+            GranDB::table("activation_codes")->where("id", $record["id"])->where("claimed_by_device", $device_id)->update({"status": "available", "claimed_by_device": nil, "claimed_at": nil})
+            return ApiResponse::error("No se pudo completar la activacion", 409)
+        }
+        LiveUpdate::admin("device_activation")
+        LiveUpdate::organization($record["organization_id"], "device_activation")
         return ApiResponse::json({
             "device_id": $device_id,
             "device_token": $token,

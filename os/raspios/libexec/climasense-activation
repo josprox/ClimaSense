@@ -1,0 +1,19 @@
+#!/bin/sh
+set -eu
+data=/data/climasense
+/usr/local/lib/climasense/activation-ready && exit 0
+[ -s "$data/activation.code" ] || exit 0
+ip route | grep -q '^default' || exit 1
+code="$(cat "$data/activation.code")"
+serial="$(sed -n 's/^Serial[[:space:]]*:[[:space:]]*//p' /proc/cpuinfo | tail -n 1)"
+[ -n "$serial" ] || serial="$(cat /etc/machine-id 2>/dev/null || hostname)"
+sed -i '/^DEVICE_ID=/d;/^HARDWARE_ID=/d' "$data/.env"
+chown climasense:climasense "$data/.env"
+chmod 0600 "$data/.env"
+export CLIMASENSE_ACTIVATION_CODE="$code" CLIMASENSE_HARDWARE_ID="$serial" CLIMASENSE_DEVICE_NAME='ClimaSense Edge'
+cd /opt/climasense/edge
+runuser -u climasense -- /usr/local/bin/joss run activate.joss
+rm -f "$data/activation.code"
+chown climasense:climasense "$data/device.token" "$data/.env"
+chmod 0600 "$data/device.token" "$data/.env"
+systemctl start --no-block climasense-edge.service || true

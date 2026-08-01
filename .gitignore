@@ -22,6 +22,8 @@ edge/storage/
 /plugins/*/*.jp
 /edge/plugins/
 /server/plugins/
+/server/log.txt
+/server/storage/
 
 # Diagnosticos y archivos temporales locales.
 *.log

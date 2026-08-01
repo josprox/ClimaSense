@@ -1,33 +1,38 @@
 class EdgeConfig {
+    func integerEnv(string $name, int $fallback) {
+        $raw = System::env($name, "")
+        return empty($raw) ? $fallback : JSON::parse($raw)
+    }
+
     func load() {
         $token_file = System::env("DEVICE_TOKEN_FILE", System::env("CLIMASENSE_TOKEN_FILE", "/data/climasense/device.token"))
         $device_id = System::env("DEVICE_ID", "replace-after-provisioning")
+        empty($device_id) ? { $device_id = "replace-after-provisioning" } : {}
         $hardware_id = System::env("HARDWARE_ID", System::env("CLIMASENSE_HARDWARE_ID", "replace-after-provisioning"))
         $device_name = System::env("DEVICE_NAME", System::env("CLIMASENSE_DEVICE_NAME", "climasense-edge"))
         $location = System::env("DEVICE_LOCATION", "")
         $firmware_version = System::env("DEVICE_FIRMWARE_VERSION", "0.2.0")
 
-        $sensor_bus = System::env("SENSOR_BUS", 1)
+        $sensor_bus = EdgeConfig::integerEnv("SENSOR_BUS", 1)
         $sensor_address = System::env("SENSOR_ADDRESS", "auto")
-        $sample_interval = System::env("SENSOR_SAMPLE_INTERVAL", 30)
-        $temp_oversampling = System::env("SENSOR_TEMP_OVERSAMPLING", 1)
-        $press_oversampling = System::env("SENSOR_PRESS_OVERSAMPLING", 4)
-        $filter = System::env("SENSOR_FILTER", 2)
-        $timeout_ms = System::env("SENSOR_TIMEOUT_MS", 1000)
-        $max_retries = System::env("SENSOR_MAX_RETRIES", 3)
+        $sample_interval = EdgeConfig::integerEnv("SENSOR_SAMPLE_INTERVAL", 30)
+        $temp_oversampling = EdgeConfig::integerEnv("SENSOR_TEMP_OVERSAMPLING", 1)
+        $press_oversampling = EdgeConfig::integerEnv("SENSOR_PRESS_OVERSAMPLING", 4)
+        $filter = EdgeConfig::integerEnv("SENSOR_FILTER", 2)
+        $timeout_ms = EdgeConfig::integerEnv("SENSOR_TIMEOUT_MS", 1000)
+        $max_retries = EdgeConfig::integerEnv("SENSOR_MAX_RETRIES", 3)
 
         $base_url = System::env("SERVER_BASE_URL", "http://127.0.0.1:8080")
         $activation_path = System::env("SERVER_ACTIVATION_PATH", "/api/v1/edge/activate")
         $websocket_path = System::env("SERVER_WEBSOCKET_PATH", "/ws/edge")
         $transport = System::env("SERVER_TRANSPORT", "websocket")
         $telemetry_path = System::env("SERVER_TELEMETRY_PATH", "/api/v1/telemetry/batch")
-        $timeout_seconds = System::env("SERVER_TIMEOUT_SECONDS", 15)
-        $batch_size = System::env("SERVER_BATCH_SIZE", 50)
+        $timeout_seconds = EdgeConfig::integerEnv("SERVER_TIMEOUT_SECONDS", 15)
+        $batch_size = EdgeConfig::integerEnv("SERVER_BATCH_SIZE", 50)
 
         $database_path = System::env("STORAGE_DATABASE_PATH", "/data/climasense/edge.sqlite")
-        $max_offline_records = System::env("STORAGE_MAX_OFFLINE_RECORDS", 50000)
+        $max_offline_records = EdgeConfig::integerEnv("STORAGE_MAX_OFFLINE_RECORDS", 50000)
 
-        empty($device_id) ? { throw "DEVICE_ID es obligatorio en el entorno (.env)" } : {}
         empty($token_file) ? { throw "DEVICE_TOKEN_FILE es obligatorio en el entorno (.env)" } : {}
         empty($base_url) ? { throw "SERVER_BASE_URL es obligatorio en el entorno (.env)" } : {}
         empty($websocket_path) ? { throw "SERVER_WEBSOCKET_PATH es obligatorio en el entorno (.env)" } : {}

@@ -1,13 +1,7 @@
-# Grabacion
+# Grabacion e instalacion
 
-Verifique primero el dispositivo de bloque; un destino incorrecto destruye datos.
+La ruta soportada no graba una imagen ClimaSense propia. Use Raspberry Pi Imager para instalar Raspberry Pi OS Lite de 64 bits, configure usuario, SSH, Raspberry Pi Connect y una red temporal funcional —preferentemente mediante el adaptador USB si el radio integrado falla— y arranque la placa.
 
-```sh
-./scripts/flash-image.sh /dev/sdX
-```
+Genere `dist/climasense-raspios-installer.tar.gz` con `scripts/build-raspios-bundle.sh`, copielo a la Raspberry y ejecute `sudo sh os/raspios/install.sh`. El instalador conserva la conexion actual hasta el reinicio. El procedimiento detallado y los comandos de actualizacion estan en `RASPBERRY_PI_OS.md`.
 
-El script exige escribir `FLASH`, usa bloques de 4 MiB, `fsync` y `sync`. Alternativamente use Raspberry Pi Imager con `dist/climasense-os-rpi-zero-2-w.img` y verifique el SHA-256 publicado.
-
-El flujo normal ya no requiere escribir identidad ni token en la tarjeta, ni usar pantalla o teclado: conectese al punto de acceso `Configuracion ClimaSense` y complete Wi-Fi, activacion y credenciales del hotspot de mantenimiento en `http://192.168.4.1:8080`.
-
-La URL SaaS se fija en `edge/env.example` o `.env` durante el build; el dispositivo obtiene identidad y token al consumir el codigo. La preconfiguracion headless requiere preparar conjuntamente `wpa_supplicant.conf`, `activation.code` y un `hostapd.conf` WPA2 dentro de `/data/climasense`; si falta cualquiera, el dispositivo conserva el flujo seguro mediante portal.
+Tras reiniciar aparece `Configuracion ClimaSense`; en `http://192.168.4.1:8080` se capturan Wi-Fi, codigo de activacion y credenciales del hotspot privado. No se escribe identidad ni token en la tarjeta y no se solicita ningun dato por consola. `scripts/flash-image.sh` y la imagen Buildroot se mantienen exclusivamente para reproducir el camino historico.

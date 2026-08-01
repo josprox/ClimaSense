@@ -190,5 +190,13 @@
   document.querySelector("[data-logout]").addEventListener("click",()=>api("/api/v1/auth/logout",{method:"POST",body:"{}"}).then(()=>location.assign("/login")));
   $("refresh-tenant").addEventListener("click",load);
   load();
-  setInterval(load,30000);
+  window.ClimaSenseLive.start({
+    onRefresh:load,
+    fallbackMs:20000,
+    onStatus:state=>{
+      const node=document.querySelector("[data-live-status]");
+      const labels={live:"Panel actualizado en vivo",connecting:"Conectando panel en vivo",reconnecting:"Reconectando panel en vivo",fallback:"Respaldo por consulta periódica",offline:"Navegador sin red"};
+      if(node)node.textContent=labels[state]||labels.connecting;
+    }
+  });
 })();

@@ -1,5 +1,7 @@
 # Compilacion incremental de la imagen
 
+> Flujo historico de Buildroot. El despliegue actual con Raspberry Pi OS genera un instalador mediante `scripts/build-raspios-bundle.sh` y no recompila una imagen completa.
+
 Estos scripts son alternativos y no modifican `build-os.sh`.
 
 La primera preparacion descarga las fuentes seleccionadas:

@@ -39,6 +39,8 @@ class AdminController {
         GranDB::table("organizations")->insert({"name": $name, "slug": $slug, "contact_email": $email, "plan": $plan, "status": "active", "created_at": System::now(), "updated_at": System::now()})
         $organization = GranDB::table("organizations")->where("slug", $slug)->first()
         GranDB::table("organization_users")->insert({"organization_id": $organization["id"], "user_id": $user["id"], "organization_role": "owner", "created_at": System::now()})
+        LiveUpdate::admin("organization")
+        LiveUpdate::user($user["id"], "scope_changed")
         return ApiResponse::json({"ok": true, "organization": $organization, "login_email": $email}, 201)
     }
 
@@ -58,6 +60,8 @@ class AdminController {
             "created_by_user_id": $admin_id,
             "created_at": System::now()
         })
+        LiveUpdate::admin("activation_code")
+        LiveUpdate::organization($organization_id, "activation_code")
         return ApiResponse::json({"ok": true, "activation_code": $code, "notice": "Copielo ahora; solo se muestra una vez"}, 201)
     }
 

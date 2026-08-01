@@ -1,0 +1,9 @@
+import "src/Config.joss"
+
+func requireInt(int $value) {
+    return $value
+}
+
+$configured = EdgeConfig::integerEnv("CLIMASENSE_TEST_INTEGER", 15)
+requireInt($configured)
+print("env-number-ok")
