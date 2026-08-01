@@ -22,12 +22,14 @@ install -d -m 0755 /opt/climasense/edge /opt/climasense/plugins /usr/local/lib/c
 install -m 0755 "$root/dist/joss-linux-arm64" /usr/local/bin/joss
 
 edge_source="$root/edge"
-if [ ! -d "$edge_source" ]; then
+if [ -d "$edge_source" ]; then
+  tar -C "$edge_source" --exclude='.env' --exclude='plugins' --exclude='storage' \
+    --exclude='tests' --exclude='log.txt' --exclude='*.sqlite*' -cf - . | tar -C /opt/climasense/edge -xf -
+else
   edge_source="$root"
+  tar -C "$edge_source" -cf - activate.joss env.example joss.yaml main.joss onboarding.joss src | \
+    tar -C /opt/climasense/edge -xf -
 fi
-
-tar -C "$edge_source" --exclude='.env' --exclude='plugins' --exclude='storage' \
-  --exclude='tests' --exclude='log.txt' --exclude='*.sqlite*' -cf - . | tar -C /opt/climasense/edge -xf -
 if [ ! -f /data/climasense/.env ]; then
   install -o climasense -g climasense -m 0600 "$edge_source/env.example" /data/climasense/.env
 else
