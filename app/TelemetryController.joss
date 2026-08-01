@@ -35,6 +35,7 @@ class TelemetryController {
         try {
             $device = DeviceAuth::verify($payload)
             $inserted = TelemetryController::store($payload, $device["device_id"])
+            ($inserted == true) ? { LiveUpdate::device($device["device_id"], "telemetry") } : {}
             return Response::json({"accepted": ($inserted == true) ? 1 : 0, "duplicate": ($inserted == false)})
         } catch ($error) {
             return ApiResponse::error("Telemetria rechazada", 400)
@@ -63,6 +64,7 @@ class TelemetryController {
             $through = $measurement["sequence"]
         }
         GranDB::table("devices")->where("device_id", $device_id)->update({"last_seen_at": System::now(), "updated_at": System::now()})
+        LiveUpdate::device($device_id, "telemetry")
         return {"ok": true, "type": "ack", "accepted": $accepted, "duplicates": $duplicates, "accepted_through": $through}
     }
 

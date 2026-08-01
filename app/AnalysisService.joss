@@ -56,6 +56,8 @@ class AnalysisService {
             "window_ended_at": System::now(),
             "created_at": System::now()
         })
+        LiveUpdate::admin("analysis")
+        LiveUpdate::organization($device["organization_id"], "analysis")
         return true
     }
 

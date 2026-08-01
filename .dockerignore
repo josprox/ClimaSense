@@ -4,8 +4,9 @@
 env.joss
 *.sqlite
 *.sqlite3
-storage/*.sqlite
-storage/*.sqlite3
-storage/logs/*
+storage/
 tests/server-test.sqlite*
 log.txt
+*.log
+plugins/*/native/
+plugins/*/*.jp

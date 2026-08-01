@@ -9,3 +9,23 @@ env.enc
 *.sqlite-shm
 *.sqlite-wal
 plugins/*/native/
+
+# Estado y diagnosticos locales del servidor.
+log.txt
+storage/
+*.log
+*.tmp
+*.bak
+*.swp
+*.swo
+*.orig
+
+# Paquetes generados durante desarrollo. La version 0.2.0 de transport se
+# conserva rastreada porque es la dependencia de despliegue de esta rama.
+plugins/*/*.jp
+plugins/climasense_transport/0.1.0/
+plugins/*/log.txt
+
+# Directorios del monorepo que pueden quedar al alternar ramas locales.
+/edge/
+/server/

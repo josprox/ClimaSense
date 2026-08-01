@@ -1,0 +1,54 @@
+class DashboardSocketController {
+    func connect($ws) {
+        $this->connection = $ws
+        $this->authenticated = false
+        $ws->onMessage($this->handleMessage)
+    }
+
+    func handleMessage($message) {
+        ($this->authenticated == true) ? { return DashboardSocketController::handleAuthenticated($this, $message) } : {}
+        $connection = $this->connection
+        try {
+            $payload = JSON::parse($message)
+            ($payload["type"] == "authenticate") ? {} : { throw "Autenticacion requerida" }
+            string $token = $payload["token"]
+            (empty($token) == true) ? { throw "Token requerido" } : {}
+            $valid = Auth::validateToken($token)
+            ($valid == true) ? {} : { throw "Token invalido" }
+
+            $user_id = Auth::id()
+            $scope = "user"
+            $connection->subscribe("dashboard:user:" . $user_id)
+            (Auth::hasRole("admin") == true) ? {
+                $connection->subscribe("dashboard:admin")
+                $scope = "admin"
+            } : {
+                $membership = SaaSAuth::findMembership()
+                empty($membership) ? {} : {
+                    $connection->subscribe("dashboard:organization:" . $membership["organization_id"])
+                    $scope = "organization"
+                }
+            }
+            $this->authenticated = true
+            $connection->send(JSON::stringify({"ok": true, "type": "ready", "scope": $scope, "generated_at": System::now()}))
+        } catch ($error) {
+            $connection->send(JSON::stringify({"ok": false, "type": "error", "error": "Autenticacion WebSocket rechazada"}))
+            $connection->close()
+        }
+    }
+
+    func handleAuthenticated($controller, $message) {
+        $connection = $controller->connection
+        try {
+            $payload = JSON::parse($message)
+            ($payload["type"] == "ping") ? {
+                $connection->send(JSON::stringify({"ok": true, "type": "pong", "generated_at": System::now()}))
+                return true
+            } : {}
+            $connection->send(JSON::stringify({"ok": false, "type": "error", "error": "Mensaje no soportado"}))
+        } catch ($error) {
+            $connection->send(JSON::stringify({"ok": false, "type": "error", "error": "Mensaje WebSocket invalido"}))
+        }
+        return false
+    }
+}

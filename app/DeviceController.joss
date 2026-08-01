@@ -12,6 +12,7 @@ class DeviceController {
         $token_hash = ClimaSenseTransport::hashToken($token)
         GranDB::table("devices")->insert({"device_id": $device_id, "name": Request::input("name", "ClimaSense Edge"), "location": Request::input("location", ""), "status": "active", "created_at": System::now(), "updated_at": System::now()})
         GranDB::table("device_credentials")->insert({"device_id": $device_id, "token_hash": $token_hash, "revoked": false, "created_at": System::now()})
+        LiveUpdate::admin("device_provision")
         return ApiResponse::json({"device_id": $device_id, "token": $token, "token_notice": "Se muestra una sola vez"}, 201)
     }
 
@@ -21,6 +22,7 @@ class DeviceController {
             $device = DeviceAuth::verify($payload)
             GranDB::table("device_heartbeats")->insert({"device_id": $device["device_id"], "firmware_version": Request::input("firmware_version", ""), "runtime_version": Request::input("runtime_version", ""), "health_json": JSON::stringify(Request::input("health", {})), "received_at": System::now()})
             GranDB::table("devices")->where("device_id", $device["device_id"])->update({"last_seen_at": System::now(), "updated_at": System::now()})
+            LiveUpdate::device($device["device_id"], "heartbeat")
             return Response::json({"ok": true})
         } catch ($error) {
             return ApiResponse::error("Autenticacion de dispositivo rechazada", 401)

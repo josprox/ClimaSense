@@ -178,5 +178,18 @@
     $("refresh-button").addEventListener("click", load);
     window.addEventListener("resize", drawChart);
     load();
-    window.setInterval(load, 10000);
+    window.ClimaSenseLive.start({
+        onRefresh: load,
+        fallbackMs: 20000,
+        onStatus: (state) => {
+            const labels = {
+                live: "Joss Server · actualizaciones WebSocket en vivo",
+                connecting: "Joss Server · conectando canal en vivo",
+                reconnecting: "Joss Server · reconectando canal en vivo",
+                fallback: "Joss Server · respaldo por consulta periódica",
+                offline: "Joss Server · navegador sin red"
+            };
+            text("live-status", labels[state] || labels.connecting);
+        }
+    });
 })();

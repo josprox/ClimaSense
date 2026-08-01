@@ -1,0 +1,34 @@
+class LiveUpdate {
+    func payload(string $resource) {
+        return JSON::stringify({
+            "type": "refresh",
+            "resource": $resource,
+            "generated_at": System::now()
+        })
+    }
+
+    func admin(string $resource) {
+        WebSocket::publish("dashboard:admin", LiveUpdate::payload($resource))
+        return true
+    }
+
+    func organization($organization_id, string $resource) {
+        ($organization_id == nil) ? { return false } : {}
+        WebSocket::publish("dashboard:organization:" . $organization_id, LiveUpdate::payload($resource))
+        return true
+    }
+
+    func user($user_id, string $resource) {
+        ($user_id == nil) ? { return false } : {}
+        WebSocket::publish("dashboard:user:" . $user_id, LiveUpdate::payload($resource))
+        return true
+    }
+
+    func device(string $device_id, string $resource) {
+        $device = GranDB::table("devices")->where("device_id", $device_id)->first()
+        empty($device) ? { LiveUpdate::admin($resource); return false } : {}
+        LiveUpdate::admin($resource)
+        LiveUpdate::organization($device["organization_id"], $resource)
+        return true
+    }
+}

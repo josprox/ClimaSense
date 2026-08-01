@@ -81,6 +81,8 @@ class TenantController {
             "created_at": System::now()
         })
 
+        LiveUpdate::admin("organization")
+        LiveUpdate::user($user_id, "scope_changed")
         return ApiResponse::json({"ok": true, "organization": $org}, 201)
     }
 
@@ -90,7 +92,7 @@ class TenantController {
         $label = Request::input("label", "Dispositivo ClimaSense Edge")
         $user_id = SaaSAuth::userId()
 
-        $raw_code = "CS-" . Str::upper(Str::random(4)) . "-" . Str::upper(Str::random(4)) . "-" . Str::upper(Str::random(4))
+        $raw_code = "CS-" . ClimaSenseTransport::randomToken(16)
         $code_hash = ClimaSenseTransport::hashToken($raw_code)
 
         GranDB::table("activation_codes")->insert({
@@ -102,6 +104,8 @@ class TenantController {
             "created_at": System::now()
         })
 
+        LiveUpdate::admin("activation_code")
+        LiveUpdate::organization($organization_id, "activation_code")
         return ApiResponse::json({"ok": true, "code": $raw_code, "label": $label}, 201)
     }
 
@@ -128,6 +132,8 @@ class TenantController {
             "created_at": System::now(),
             "updated_at": System::now()
         })
+        LiveUpdate::admin("location")
+        LiveUpdate::organization($organization_id, "location")
         return ApiResponse::json({"ok": true}, 201)
     }
 
@@ -140,6 +146,8 @@ class TenantController {
         $device = GranDB::table("devices")->where("device_id", $device_id)->where("organization_id", $organization_id)->first()
         empty($device) ? { return ApiResponse::error("Dispositivo no encontrado", 404) } : {}
         GranDB::table("devices")->where("device_id", $device_id)->update({"location_id": $location_id, "location": $location["name"], "updated_at": System::now()})
+        LiveUpdate::admin("device_location")
+        LiveUpdate::organization($organization_id, "device_location")
         return ApiResponse::json({"ok": true}, 200)
     }
 }
