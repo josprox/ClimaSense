@@ -28,8 +28,11 @@ WORKDIR /app
 # Copiar todo el código del servidor
 COPY . .
 
-# Hacer ejecutable el entrypoint
-RUN chmod +x entrypoint.sh
+# Instala el JP versionado donde el cargador lo prioriza y comprueba una
+# llamada nativa real antes de aceptar la imagen.
+RUN sh scripts/install-server-plugin.sh \
+    && joss run tests/transport-token.joss \
+    && chmod +x entrypoint.sh scripts/install-server-plugin.sh
 
 # Directorio de almacenamiento para SQLite / archivos de sesión
 RUN mkdir -p storage/logs

@@ -1,0 +1,6 @@
+$token = ClimaSenseTransport::randomToken(16)
+(Str::length($token) >= 20) ? {} : { throw "El plugin no genero un token seguro" }
+$hash = ClimaSenseTransport::hashToken($token)
+(Str::length($hash) == 64) ? {} : { throw "El plugin no genero SHA-256" }
+
+print("server-transport-token-ok")

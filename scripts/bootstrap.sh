@@ -8,6 +8,7 @@ for command in go curl unzip sha256sum tar; do
 done
 
 sh "$root/scripts/prepare-joss-release.sh"
+sh "$root/scripts/install-server-plugin.sh"
 echo "Go: $(go version)"
 echo "Joss release: $(sh "$root/scripts/joss-current.sh" version)"
 echo "Bootstrap de ClimaSense completado"

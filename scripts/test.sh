@@ -4,6 +4,7 @@ set -eu
 root="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
 joss="$root/scripts/joss-current.sh"
 echo "Probando con $(sh "$joss" version) desde la release oficial"
+sh "$root/scripts/install-server-plugin.sh"
 
 (cd "$root/plugins/climasense_transport" && go test ./... && go vet ./...)
 
@@ -23,7 +24,7 @@ cleanup_tests() {
   fi
 }
 trap cleanup_tests EXIT INT TERM
-(cd "$root" && sh "$joss" migrate && sh "$joss" run tests/schema.joss && sh "$joss" run tests/saas-schema.joss && sh "$joss" run tests/database-ready.joss && sh "$joss" run tests/client-flow.joss && sh "$joss" run tests/live-updates.joss && sh "$joss" run tests/syntax.joss)
+(cd "$root" && sh "$joss" migrate && sh "$joss" run tests/schema.joss && sh "$joss" run tests/saas-schema.joss && sh "$joss" run tests/database-ready.joss && sh "$joss" run tests/client-flow.joss && sh "$joss" run tests/live-updates.joss && sh "$joss" run tests/transport-token.joss && sh "$joss" run tests/syntax.joss)
 
 if command -v node >/dev/null 2>&1; then
   node --check "$root/public/js/live.js"
@@ -39,7 +40,7 @@ fi
   cleanup_http() {
     kill "$server_pid" 2>/dev/null || true
     wait "$server_pid" 2>/dev/null || true
-    rm -f tests/server-http.log
+    rm -f tests/server-http.log tests/server-cookie.txt tests/register.json tests/organization.json tests/activation-code.json
   }
   trap cleanup_http EXIT INT TERM
 
@@ -69,6 +70,26 @@ fi
   [ "$admin_status" = "401" ] || { echo "admin status=$admin_status, want 401" >&2; exit 1; }
   [ "$tenant_status" = "401" ] || { echo "tenant status=$tenant_status, want 401" >&2; exit 1; }
   [ "$ws_token_status" = "401" ] || { echo "ws token status=$ws_token_status, want 401" >&2; exit 1; }
+
+  register_status="$(curl -sS -o tests/register.json -w '%{http_code}' \
+    -c tests/server-cookie.txt -H 'Content-Type: application/json' \
+    --data '{"email":"edge-test@example.invalid","password":"Test-only-password-2026!","name":"Edge Test"}' \
+    http://127.0.0.1:18080/api/v1/auth/register)"
+  [ "$register_status" = "201" ] || { cat tests/register.json; cat tests/server-http.log; exit 1; }
+
+  organization_status="$(curl -sS -o tests/organization.json -w '%{http_code}' \
+    -b tests/server-cookie.txt -H 'Content-Type: application/json' \
+    --data '{"name":"ClimaSense Test","slug":"climasense-test","contact_email":"edge-test@example.invalid"}' \
+    http://127.0.0.1:18080/api/v1/tenant/organizations)"
+  [ "$organization_status" = "201" ] || { cat tests/organization.json; cat tests/server-http.log; exit 1; }
+
+  activation_status="$(curl -sS -o tests/activation-code.json -w '%{http_code}' \
+    -b tests/server-cookie.txt -H 'Content-Type: application/json' \
+    --data '{"label":"Raspberry HTTP Test"}' \
+    http://127.0.0.1:18080/api/v1/tenant/activation-codes)"
+  [ "$activation_status" = "201" ] || { cat tests/activation-code.json; cat tests/server-http.log; exit 1; }
+  grep -Eq '"code":"CS-[A-Za-z0-9_-]+"' tests/activation-code.json || { cat tests/activation-code.json; exit 1; }
+
   if ! (cd "$root/plugins/climasense_transport" && go run "$root/tests/dashboard-live.go"); then
     cat tests/server-http.log
     exit 1

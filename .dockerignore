@@ -10,3 +10,4 @@ log.txt
 *.log
 plugins/*/native/
 plugins/*/*.jp
+!plugins/climasense_transport/0.2.0/climasense_transport.jp

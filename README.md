@@ -21,4 +21,6 @@ La prueba levanta el servidor en `127.0.0.1:18080`, valida rutas públicas y pro
 
 El `Dockerfile` usa `JOSS_VERSION=latest` con el instalador oficial no interactivo y está preparado para Dokploy. Una versión concreta sólo se pasa como argumento cuando se necesite reproducir un despliegue anterior. Define secretos distintos y robustos para `JWT_SECRET`, `APP_KEY` y `SAAS_BOOTSTRAP_KEY`; en producción conserva `SESSION_COOKIE_SECURE=true` y sirve el sitio mediante HTTPS/WSS.
 
+Durante el build, Docker instala el paquete versionado `climasense_transport.jp` en la ubicación de autoload y ejecuta una llamada criptográfica real. El despliegue falla de inmediato si el payload nativo no puede registrarse; no se publica un contenedor que vaya a responder 500 al generar o consumir códigos de activación.
+
 No subas `.env`, `env.joss`, sesiones, bases SQLite ni bitácoras. La única dependencia binaria rastreada en esta rama es `plugins/climasense_transport/0.2.0/climasense_transport.jp`, necesaria para que una compilación autónoma pueda iniciar sin depender del monorepo.
