@@ -4,7 +4,7 @@ Actualizado tras la migracion y prueba fisica en Raspberry Pi OS.
 
 | Componente | Estado | Evidencia |
 |---|---|---|
-| Runtime Joss | IMPLEMENTADO Y PROBADO | Servidor fijado a Joss `>=3.6.3`; suite y canales WebSocket ejecutados con 3.6.3 compilado desde el repositorio indicado |
+| Runtime Joss | IMPLEMENTADO Y PROBADO | Ultima release oficial descargada y verificada; suite, canales WebSocket y bundle ejecutados con V3.6.4 sin compilar Joss-language |
 | Plugin I2C Linux | IMPLEMENTADO Y PROBADO EN HARDWARE | `/dev/i2c-1` operativo y dispositivo detectado en `0x76` |
 | Driver BMP280/BME280 | IMPLEMENTADO Y PROBADO | Vectores, errores y chip IDs `0x58`/`0x60` cubiertos; BME280 fisico leido correctamente |
 | Cola Edge SQLite | IMPLEMENTADO Y PROBADO | WAL, orden, idempotencia, retencion y eliminacion posterior al ACK |
@@ -29,6 +29,6 @@ Actualizado tras la migracion y prueba fisica en Raspberry Pi OS.
 
 ## Validacion ejecutada
 
-`scripts/test.sh` pasa con Joss 3.6.3 e incluye Go test/vet, RPC de plugins, configuracion y cola Edge, migraciones, indices, rutas, codigos HTTP y una prueba real que inicia sesion, autentica `/ws/dashboard`, realiza una mutacion HTTP y recibe el evento `refresh`.
+`scripts/test.sh` pasa con la release oficial V3.6.4 e incluye Go test/vet, RPC de plugins, configuracion y cola Edge, migraciones, indices, rutas, codigos HTTP y una prueba real que inicia sesion, autentica `/ws/dashboard`, realiza una mutacion HTTP y recibe el evento `refresh`. El numero no esta fijado en scripts: `bootstrap.sh` consulta y prepara la release mas reciente.
 
 En la Raspberry Pi se confirmo BME280 en `0x76`, activacion persistente, servicio Edge activo, `Medicion almacenada: secuencia=1` y `Sincronizacion: {"ok":true,"sent":1}`. Quedan como validaciones prolongadas el corte de energia, direccion `0x77`, recuperacion repetida de AP y mantenimiento por GPIO17 bajo fallos consecutivos.

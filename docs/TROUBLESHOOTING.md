@@ -6,9 +6,9 @@
 - Cola crece: revise hora UTC, DNS, URL HTTP, credencial y respuesta del servidor.
 - Firma invalida: compare JSON, secuencia, nonce y reloj; no reutilice solicitudes.
 - Servicio reinicia: ejecute el diagnostico del plugin y revise espacio disponible en `/data`.
-- Una respuesta de error aparece como HTTP 200: confirme que el proceso usa Joss 3.6.3 y conserve `ApiResponse::error` en los controladores ClimaSense. La suite comprueba los codigos reales.
+- Una respuesta de error aparece como HTTP 200: ejecute `scripts/bootstrap.sh` para preparar la ultima release de Joss y conserve `ApiResponse::error` en los controladores ClimaSense. La suite comprueba los codigos reales.
 - `empty($map["key"])` rechaza un valor que si existe: asigne primero `$value = $map["key"]` y despues evalue `empty($value)`. La misma precaucion aplica a llamadas dentro de `empty()` en codigo que deba seguir siendo compatible.
-- El panel solo cambia al recargar: compruebe Joss `>=3.6.3`, `WS /ws/dashboard` y que el proxy reenvie `Upgrade`/`Connection`. La interfaz indica "respaldo por consulta periodica" cuando el socket esta caido. En varias replicas sin backplane, mantenga una sola replica para entrega inmediata.
+- El panel solo cambia al recargar: compruebe que el despliegue usa la ultima release de Joss, `WS /ws/dashboard` y que el proxy reenvie `Upgrade`/`Connection`. La interfaz indica "respaldo por consulta periodica" cuando el socket esta caido. En varias replicas sin backplane, mantenga una sola replica para entrega inmediata.
 - `GET /api/v1/auth/ws-token` devuelve `401`: la sesion expiro; vuelva a iniciar sesion. El token no debe copiarse a la URL ni almacenarse manualmente.
 # Diagnostico de arranque
 

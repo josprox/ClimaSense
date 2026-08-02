@@ -1,15 +1,14 @@
 # ClimaSense Edge
 
-Esta rama contiene únicamente el agente Edge de ClimaSense para Raspberry Pi OS Lite de 64 bits. Incluye el portal cautivo, activación web, hotspot protegido de mantenimiento, selección dinámica del adaptador Wi-Fi USB, cola local de telemetría y lectura BMP280/BME280 por I2C. Requiere Joss 3.6.3 o posterior.
+Esta rama contiene únicamente el agente Edge de ClimaSense para Raspberry Pi OS Lite de 64 bits. Incluye el portal cautivo, activación web, hotspot protegido de mantenimiento, selección dinámica del adaptador Wi-Fi USB, cola local de telemetría y lectura BMP280/BME280 por I2C. Usa siempre la última release estable de Joss; `>=3.6.3` es únicamente el contrato mínimo de compatibilidad.
 
 La instalación recomendada parte de Raspberry Pi Imager. Raspberry Pi Connect o una conexión existente pueden conservarse durante la instalación; después del reinicio, ClimaSense abre temporalmente el hotspot de configuración y no solicita credenciales en la consola.
 
 ## Construcción
 
-En Linux o WSL, usando una copia local de Joss-language:
+En Linux o WSL:
 
 ```sh
-export JOSS_SOURCE=/ruta/de/solo/lectura/Joss-language
 ./scripts/bootstrap.sh
 ./scripts/build-runtime.sh
 ./scripts/build-plugins.sh
@@ -17,6 +16,8 @@ export JOSS_SOURCE=/ruta/de/solo/lectura/Joss-language
 ./scripts/build-raspios-bundle.sh
 ./scripts/manifest.sh
 ```
+
+`bootstrap.sh` descarga la última release oficial, valida el SHA-256 y conserva el ZIP por versión en `cache/joss-release`. También extrae `joss-linux-arm64` para el instalador de Raspberry; no compila ni requiere clonar Joss-language.
 
 El paquete resultante es `dist/climasense-raspios-installer.tar.gz`. En la Raspberry Pi:
 

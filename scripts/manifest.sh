@@ -6,6 +6,7 @@ mkdir -p "$root/dist"
 generated="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 image_status="not_built"
 [ -f "$root/dist/climasense-os-rpi-zero-2-w.img" ] && image_status="built"
+joss_version="$(cat "$root/dist/joss-linux-arm64.version" 2>/dev/null || printf 'unknown')"
 
 {
 cat <<EOF
@@ -15,7 +16,7 @@ cat <<EOF
   "generated_at": "$generated",
   "architecture": "linux-arm64",
   "buildroot": "$(cat "$root/os/buildroot/buildroot.version")",
-  "joss": "3.6.3",
+  "joss": "$joss_version",
   "image_status": "$image_status",
   "hardware_validation": "pending",
   "artifacts": [
