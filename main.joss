@@ -1,6 +1,6 @@
-import "src/Config.joss"
-import "src/TelemetryQueue.joss"
-import "src/EdgeService.joss"
-
-$config = EdgeConfig::load()
-EdgeService::run($config)
+class Main {
+    Init main() {
+        print("ClimaSense: iniciando portal de configuracion")
+        Server::start()
+    }
+}

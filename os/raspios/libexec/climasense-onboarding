@@ -60,6 +60,14 @@ echo "ClimaSense: usando $iface para el hotspot" >>"$log"
 command -v rfkill >/dev/null 2>&1 && rfkill unblock wifi || true
 ip link set "$iface" up
 ip addr flush dev "$iface" || true
+scan_tmp="$data/wifi.scan.tmp"
+{
+  iw dev "$iface" scan 2>/dev/null | sed -n 's/^[[:space:]]*SSID: //p'
+  iwlist "$iface" scan 2>/dev/null | sed -n 's/.*ESSID:"\(.*\)"/\1/p'
+} | awk 'NF && !seen[$0]++' >"$scan_tmp"
+mv "$scan_tmp" "$data/wifi.scan"
+chown climasense:climasense "$data/wifi.scan"
+chmod 0640 "$data/wifi.scan"
 ip addr add 192.168.4.1/24 dev "$iface"
 { printf 'interface=%s\n' "$iface"; cat "$ap_config"; } > /run/climasense-hostapd.conf
 { printf 'interface=%s\n' "$iface"; cat /etc/climasense-dnsmasq.conf; } > /run/climasense-dnsmasq.conf
@@ -71,10 +79,14 @@ dnsmasq -C /run/climasense-dnsmasq.conf >>"$log" 2>&1 || fail "dnsmasq no pudo i
 ) >>"$log" 2>&1 &
 portal_pid=$!
 printf '%s\n' "$portal_pid" >"$portal_pidfile"
-sleep 2
-if ! kill -0 "$portal_pid" 2>/dev/null; then
-  fail "el portal web no pudo iniciar; revise $log"
-fi
+attempts=0
+while [ "$attempts" -lt 15 ]; do
+  kill -0 "$portal_pid" 2>/dev/null || fail "el portal web se detuvo antes de escuchar en el puerto 8080"
+  ss -ltn 2>/dev/null | grep -Eq '(^|[[:space:]])[^[:space:]]*:8080[[:space:]]' && break
+  sleep 1
+  attempts=$((attempts + 1))
+done
+ss -ltn 2>/dev/null | grep -Eq '(^|[[:space:]])[^[:space:]]*:8080[[:space:]]' || fail "el portal web no escucho en el puerto 8080"
 if [ "$mode" = maintenance ]; then
   while [ ! -s "$completion" ]; do
     kill -0 "$portal_pid" 2>/dev/null || fail "el portal web se detuvo"

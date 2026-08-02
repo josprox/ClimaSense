@@ -1,0 +1,9 @@
+class ApiResponse {
+    func json($data, int $status) {
+        return Response::raw(JSON::stringify($data), $status, "application/json")
+    }
+
+    func error(string $message, int $status) {
+        return ApiResponse::json({"error": $message}, $status)
+    }
+}

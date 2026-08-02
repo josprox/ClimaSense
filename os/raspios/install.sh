@@ -27,7 +27,7 @@ if [ -d "$edge_source" ]; then
     --exclude='tests' --exclude='log.txt' --exclude='*.sqlite*' -cf - . | tar -C /opt/climasense/edge -xf -
 else
   edge_source="$root"
-  tar -C "$edge_source" -cf - activate.joss env.example joss.yaml main.joss onboarding.joss src | \
+  tar -C "$edge_source" -cf - activate.joss env.example joss.yaml main.joss service.joss onboarding.joss routes.joss src | \
     tar -C /opt/climasense/edge -xf -
 fi
 if [ ! -f /data/climasense/.env ]; then
@@ -37,6 +37,8 @@ else
   chmod 0600 /data/climasense/.env
 fi
 ln -sfn /data/climasense/.env /opt/climasense/edge/.env
+install -d -m 0755 /opt/climasense/edge/app/views
+install -m 0644 "$edge_source/src/views/onboarding.joss.html" /opt/climasense/edge/app/views/onboarding.joss.html
 install -d -m 0755 /opt/climasense/edge/plugins/climasense_hardware/0.1.1
 install -d -m 0755 /opt/climasense/edge/plugins/climasense_transport/0.2.0
 install -m 0644 "$root/dist/plugins/climasense_hardware.jp" /opt/climasense/edge/plugins/climasense_hardware/0.1.1/climasense_hardware.jp

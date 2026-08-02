@@ -14,9 +14,18 @@ contains "$root/os/raspios/systemd/climasense-onboarding.service" "Before=climas
 contains "$root/os/raspios/systemd/climasense-network.service" "OnFailure=climasense-network-recovery.service"
 contains "$root/os/raspios/systemd/climasense-activation.service" "Restart=on-failure"
 contains "$root/os/raspios/systemd/climasense-edge.service" "ExecCondition=/usr/local/lib/climasense/activation-ready"
+contains "$root/os/raspios/systemd/climasense-edge.service" "joss run service.joss"
 contains "$root/os/raspios/install.sh" "climasense-activation-ready"
+contains "$root/os/raspios/install.sh" "service.joss"
+contains "$root/os/raspios/install.sh" "routes.joss"
 contains "$root/os/raspios/install.sh" "dtparam=i2c_arm=on"
 contains "$root/os/raspios/libexec/climasense-onboarding" "onboarding.failed"
+contains "$root/os/raspios/libexec/climasense-onboarding" "no escucho en el puerto 8080"
+contains "$root/os/raspios/libexec/climasense-onboarding" "wifi.scan"
+contains "$root/main.joss" "Server::start()"
+contains "$root/service.joss" "EdgeService::run"
+contains "$root/routes.joss" "onboarding.joss"
+contains "$root/onboarding.joss" "src/ApiResponse.joss"
 
 if grep -R -n 'wlan0' "$root/os/raspios" "$root/activate.joss" "$root/src/OnboardingController.joss"; then
   fail "se encontro una interfaz wlan0 fija en la ruta Raspberry Pi OS"

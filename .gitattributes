@@ -1,2 +1,7 @@
 *.sh text eol=lf
+*.joss text eol=lf
+*.yaml text eol=lf
+*.html text eol=lf
 os/raspios/libexec/* text eol=lf
+os/raspios/*.conf text eol=lf
+os/raspios/systemd/*.service text eol=lf

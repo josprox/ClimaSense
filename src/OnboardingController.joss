@@ -28,7 +28,7 @@ class OnboardingController {
     func scanWifi() {
         $networks = []
         try {
-            $output = System::Run("/bin/sh", ["-c", "iface=$(cat /run/climasense-wifi.interface 2>/dev/null); [ -n \"$iface\" ] && iwlist \"$iface\" scan 2>/dev/null | sed -n 's/.*ESSID:\"\\(.*\\)\"/\\1/p'"])
+            $output = System::Run("/bin/sh", ["-c", "iface=$(cat /run/climasense-wifi.interface 2>/dev/null); { cat /data/climasense/wifi.scan 2>/dev/null; [ -n \"$iface\" ] && iw dev \"$iface\" scan 2>/dev/null | sed -n 's/^[[:space:]]*SSID: //p'; } | awk 'NF && !seen[$0]++'"])
             $lines = explode("\n", $output)
             foreach ($lines as $line) {
                 $ssid = Str::trim($line)

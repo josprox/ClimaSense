@@ -10,3 +10,4 @@ for plugin in climasense_hardware climasense_transport; do
 done
 (cd "$root" && CLIMASENSE_TEST_INTEGER=17 sh "$joss" run tests/env-number.joss && sh "$joss" run tests/syntax.joss && sh "$joss" run tests/plugins.joss && rm -f tests/queue-test.sqlite* && sh "$joss" run tests/queue.joss && rm -f tests/queue-test.sqlite*)
 sh "$root/scripts/test-raspios.sh"
+sh "$root/scripts/test-portal.sh"
