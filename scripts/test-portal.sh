@@ -26,6 +26,10 @@ cp "$root/dist/plugins/climasense_hardware.jp" \
 cp "$root/dist/plugins/climasense_transport.jp" \
   "$work/plugins/climasense_transport/0.2.0/climasense_transport.jp"
 sed 's/^PORT=.*/PORT="18080"/' "$root/env.example" >"$work/.env"
+printf '\nCLIMASENSE_DATA_DIR="%s/data"\nDEVICE_TOKEN_FILE="%s/data/device.token"\n' \
+  "$work" "$work" >>"$work/.env"
+mkdir -p "$work/data"
+printf 'network={}\n' >"$work/data/wpa_supplicant.conf"
 
 (
   cd "$work"
@@ -44,6 +48,8 @@ while [ "$attempts" -lt 15 ]; do
 done
 
 grep -q 'ClimaSense Edge' "$work/index.html"
+curl -fsS http://127.0.0.1:18080/api/setup/status >"$work/status.json"
+grep -q '"ok":true' "$work/status.json"
 curl -fsS http://127.0.0.1:18080/api/wifi/scan >"$work/scan.json"
 grep -q '"ok":true' "$work/scan.json"
 grep -q '"networks":' "$work/scan.json"
@@ -53,5 +59,22 @@ status="$(curl -sS -o "$work/connect.json" -w '%{http_code}' \
   http://127.0.0.1:18080/api/wifi/connect)"
 [ "$status" = 422 ] || { cat "$work/connect.json"; exit 1; }
 grep -q '"error":' "$work/connect.json"
+
+status="$(curl -sS -o "$work/complete.json" -w '%{http_code}' \
+  -H 'Content-Type: application/json' \
+  -d '{"code":"TEST-CODE","ap_ssid":"ClimaSense Test","ap_pass":"testpass123"}' \
+  http://127.0.0.1:18080/api/setup/complete)"
+[ "$status" = 202 ] || { cat "$work/complete.json"; exit 1; }
+python3 - "$work/complete.json" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as response:
+    payload = json.load(response)
+assert payload["ok"] is True
+assert payload["maintenance"] is False
+PY
+grep -q '^TEST-CODE$' "$work/data/activation.code"
+grep -q '^ssid=ClimaSense Test$' "$work/data/hostapd.conf"
 
 echo "portal-http-api-ok"

@@ -5,17 +5,18 @@ class OnboardingController {
     }
 
     func setupStatus() {
+        $data_dir = System::env("CLIMASENSE_DATA_DIR", "/data/climasense")
         $activated = false
-        $token_path = System::env("DEVICE_TOKEN_FILE", "/data/climasense/device.token")
+        $token_path = System::env("DEVICE_TOKEN_FILE", $data_dir . "/device.token")
         $token = Str::trim(file_get_contents($token_path))
         (empty($token) == false) ? {
             $activated = true
         } : {}
 
         $ap_ssid = "ClimaSense Mantenimiento"
-        $saved_ssid = Str::trim(file_get_contents("/data/climasense/maintenance-ap.ssid"))
+        $saved_ssid = Str::trim(file_get_contents($data_dir . "/maintenance-ap.ssid"))
         (empty($saved_ssid) == false) ? { $ap_ssid = $saved_ssid } : {}
-        $hostapd_config = Str::trim(file_get_contents("/data/climasense/hostapd.conf"))
+        $hostapd_config = Str::trim(file_get_contents($data_dir . "/hostapd.conf"))
 
         return ApiResponse::json({
             "ok": true,
@@ -42,6 +43,7 @@ class OnboardingController {
     }
 
     func connectWifi() {
+        $data_dir = System::env("CLIMASENSE_DATA_DIR", "/data/climasense")
         $ssid = Str::trim(Request::input("ssid", ""))
         $password = Request::input("password", "")
         (empty($ssid) == true) ? { return ApiResponse::error("El SSID es obligatorio", 422) } : {}
@@ -65,23 +67,25 @@ class OnboardingController {
                 $wpa_conf = $wpa_conf . $network_line . "\n"
             } : {}
         }
-        file_put_contents("/data/climasense/wpa_supplicant.conf", $wpa_conf)
-        System::Run("chmod", ["0600", "/data/climasense/wpa_supplicant.conf"])
+        $wifi_path = $data_dir . "/wpa_supplicant.conf"
+        file_put_contents($wifi_path, $wpa_conf)
+        System::Run("chmod", ["0600", $wifi_path])
 
         return ApiResponse::json({"ok": true, "message": "Wi-Fi guardado. Ingrese ahora el codigo de activacion."}, 200)
     }
 
 
     func completeSetup() {
+        $data_dir = System::env("CLIMASENSE_DATA_DIR", "/data/climasense")
         $code = Str::trim(Request::input("code", ""))
         $ap_ssid = Str::trim(Request::input("ap_ssid", ""))
         $ap_pass = Request::input("ap_pass", "")
-        $wifi_config = Str::trim(file_get_contents("/data/climasense/wpa_supplicant.conf"))
+        $wifi_config = Str::trim(file_get_contents($data_dir . "/wpa_supplicant.conf"))
         (empty($wifi_config) == true) ? {
             return ApiResponse::error("Primero configure la red Wi-Fi", 409)
         } : {}
 
-        $token_path = System::env("DEVICE_TOKEN_FILE", "/data/climasense/device.token")
+        $token_path = System::env("DEVICE_TOKEN_FILE", $data_dir . "/device.token")
         $activated = false
         $token = Str::trim(file_get_contents($token_path))
         (empty($token) == false) ? {
@@ -89,10 +93,10 @@ class OnboardingController {
         } : {}
 
         (empty($ap_ssid) == true) ? {
-            $ap_ssid = Str::trim(file_get_contents("/data/climasense/maintenance-ap.ssid"))
+            $ap_ssid = Str::trim(file_get_contents($data_dir . "/maintenance-ap.ssid"))
         } : {}
         (empty($ap_pass) == true) ? {
-            $ap_pass = file_get_contents("/data/climasense/maintenance-ap.pass")
+            $ap_pass = file_get_contents($data_dir . "/maintenance-ap.pass")
         } : {}
 
         (empty($ap_ssid) == true) ? { return ApiResponse::error("El nombre del hotspot es obligatorio", 422) } : {}
@@ -113,17 +117,22 @@ class OnboardingController {
 
         $hostapd_conf = "driver=nl80211\ncountry_code=MX\nssid=" . $ap_ssid . "\nhw_mode=g\nchannel=6\nmacaddr_acl=0\nauth_algs=1\nignore_broadcast_ssid=0\nwpa=2\nwpa_passphrase=" . $ap_pass . "\nwpa_key_mgmt=WPA-PSK\nrsn_pairwise=CCMP\n"
 
-        file_put_contents("/data/climasense/hostapd.conf", $hostapd_conf)
-        file_put_contents("/data/climasense/maintenance-ap.ssid", $ap_ssid . "\n")
-        file_put_contents("/data/climasense/maintenance-ap.pass", $ap_pass)
-        System::Run("chmod", ["0600", "/data/climasense/hostapd.conf", "/data/climasense/maintenance-ap.ssid", "/data/climasense/maintenance-ap.pass"])
+        $hostapd_path = $data_dir . "/hostapd.conf"
+        $maintenance_ssid_path = $data_dir . "/maintenance-ap.ssid"
+        $maintenance_pass_path = $data_dir . "/maintenance-ap.pass"
+        file_put_contents($hostapd_path, $hostapd_conf)
+        file_put_contents($maintenance_ssid_path, $ap_ssid . "\n")
+        file_put_contents($maintenance_pass_path, $ap_pass)
+        System::Run("chmod", ["0600", $hostapd_path, $maintenance_ssid_path, $maintenance_pass_path])
 
         ($activated == true) ? {
-            file_put_contents("/data/climasense/maintenance.complete", "1\n")
-            System::Run("chmod", ["0600", "/data/climasense/maintenance.complete"])
+            $maintenance_complete_path = $data_dir . "/maintenance.complete"
+            file_put_contents($maintenance_complete_path, "1\n")
+            System::Run("chmod", ["0600", $maintenance_complete_path])
         } : {
-            file_put_contents("/data/climasense/activation.code", $code . "\n")
-            System::Run("chmod", ["0600", "/data/climasense/activation.code"])
+            $activation_path = $data_dir . "/activation.code"
+            file_put_contents($activation_path, $code . "\n")
+            System::Run("chmod", ["0600", $activation_path])
         }
 
         return ApiResponse::json({
