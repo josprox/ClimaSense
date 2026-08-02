@@ -108,7 +108,7 @@
     };
 
     const fallbackTimer = setInterval(() => {
-      if (!ready && !stopped) refresh();
+      if (!stopped) refresh();
     }, fallbackMs);
 
     const stop = () => {

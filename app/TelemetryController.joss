@@ -1,4 +1,11 @@
 class TelemetryController {
+    func markContact(string $device_id) {
+        $last_seen_at = System::now()
+        GranDB::table("devices")->where("device_id", $device_id)->update({"last_seen_at": $last_seen_at, "updated_at": $last_seen_at})
+        LiveUpdate::device($device_id, "telemetry")
+        return $last_seen_at
+    }
+
     func validateMeasurement($measurement, string $device_id) {
         ($measurement["device_id"] == $device_id) ? {} : { throw "device_id no coincide" }
         ($measurement["schema_version"] == 1) ? {} : { throw "schema_version no soportada" }
@@ -35,8 +42,8 @@ class TelemetryController {
         try {
             $device = DeviceAuth::verify($payload)
             $inserted = TelemetryController::store($payload, $device["device_id"])
-            ($inserted == true) ? { LiveUpdate::device($device["device_id"], "telemetry") } : {}
-            return Response::json({"accepted": ($inserted == true) ? 1 : 0, "duplicate": ($inserted == false)})
+            $last_seen_at = TelemetryController::markContact($device["device_id"])
+            return Response::json({"accepted": ($inserted == true) ? 1 : 0, "duplicate": ($inserted == false), "last_seen_at": $last_seen_at})
         } catch ($error) {
             return ApiResponse::error("Telemetria rechazada", 400)
         }
@@ -63,9 +70,8 @@ class TelemetryController {
             ($inserted == true) ? { $accepted = $accepted + 1 } : { $duplicates = $duplicates + 1 }
             $through = $measurement["sequence"]
         }
-        GranDB::table("devices")->where("device_id", $device_id)->update({"last_seen_at": System::now(), "updated_at": System::now()})
-        LiveUpdate::device($device_id, "telemetry")
-        return {"ok": true, "type": "ack", "accepted": $accepted, "duplicates": $duplicates, "accepted_through": $through}
+        $last_seen_at = TelemetryController::markContact($device_id)
+        return {"ok": true, "type": "ack", "accepted": $accepted, "duplicates": $duplicates, "accepted_through": $through, "last_seen_at": $last_seen_at}
     }
 
     func latest($device_id) {

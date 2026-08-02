@@ -20,10 +20,16 @@
 
     locations=data.locations||[];
     const devices=data.devices||[],analyses=data.analyses||[],codes=data.activation_codes||[];
+    const generatedAt=new Date(String(data.generated_at||"").replace(" ","T")).getTime();
+    const isOnline=device=>{
+      if(device.status!=="active"||!device.last_seen_at)return false;
+      const lastSeen=new Date(String(device.last_seen_at).replace(" ","T")).getTime();
+      return Number.isFinite(generatedAt)&&Number.isFinite(lastSeen)&&Math.abs(generatedAt-lastSeen)<=180000;
+    };
     $("organization-name").textContent=data.organization?.name||"Tu ambiente, en contexto";
     $("t-locations").textContent=locations.length;
     $("t-devices").textContent=devices.length;
-    $("t-online").textContent=devices.filter(d=>d.status==="active").length;
+    $("t-online").textContent=devices.filter(isOnline).length;
     $("t-analyses").textContent=analyses.length;
 
     const latest=analyses[0];
@@ -40,7 +46,7 @@
     
     $("codes-list").innerHTML=codes.length?codes.map(c=>`<div class="data-row"><div><strong>${esc(c.label||"Código de activación")}</strong><small>Creado: ${date(c.created_at)}</small></div><span class="tag ${c.status==="claimed"?"claimed":"available"}">${c.status==="claimed"?"Reclamado por "+esc(c.claimed_by_device):"Disponible"}</span></div>`).join(""):'<p class="empty-state">Sin códigos generados.</p>';
 
-    $("devices-list").innerHTML=devices.length?devices.map(d=>`<article class="device-card"><header><strong>${esc(d.name)}</strong><span class="tag">${esc(d.status)}</span></header><p>${esc(d.device_id)}<br>Último contacto: ${date(d.last_seen_at)}</p><select data-device="${esc(d.device_id)}"><option value="">Asignar ubicación…</option>${locations.map(l=>`<option value="${Number(l.id)}" ${Number(d.location_id)===Number(l.id)?"selected":""}>${esc(l.name)}</option>`).join("")}</select></article>`).join(""):'<p class="empty-state">Sin dispositivos activados.</p>';
+    $("devices-list").innerHTML=devices.length?devices.map(d=>`<article class="device-card"><header><strong>${esc(d.name)}</strong><span class="tag">${d.status!=="active"?esc(d.status):(isOnline(d)?"EN LÍNEA":"SIN CONEXIÓN")}</span></header><p>${esc(d.device_id)}<br>Último contacto: ${date(d.last_seen_at)}</p><select data-device="${esc(d.device_id)}"><option value="">Asignar ubicación…</option>${locations.map(l=>`<option value="${Number(l.id)}" ${Number(d.location_id)===Number(l.id)?"selected":""}>${esc(l.name)}</option>`).join("")}</select></article>`).join(""):'<p class="empty-state">Sin dispositivos activados.</p>';
     document.querySelectorAll("[data-device]").forEach(select=>select.addEventListener("change",()=>{if(!select.value)return;api(`/api/v1/tenant/devices/${encodeURIComponent(select.dataset.device)}/location`,{method:"POST",body:JSON.stringify({location_id:Number(select.value)})}).then(load).catch(error=>alert(error.message));}));
   };
 

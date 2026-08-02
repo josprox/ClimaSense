@@ -17,7 +17,8 @@ class EdgeSocketController {
                 "device_id": $device["device_id"],
                 "accepted": $result["accepted"],
                 "duplicates": $result["duplicates"],
-                "accepted_through": $result["accepted_through"]
+                "accepted_through": $result["accepted_through"],
+                "last_seen_at": $result["last_seen_at"]
             }))
         } catch ($error) {
             $connection->send(JSON::stringify({"ok": false, "type": "error", "error": "Telemetria WebSocket rechazada"}))

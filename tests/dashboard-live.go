@@ -2,6 +2,8 @@ package main
 
 import (
 	"bytes"
+	"crypto/hmac"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -12,6 +14,19 @@ import (
 
 	"github.com/gorilla/websocket"
 )
+
+func telemetrySignature(token, timestamp string, sequence int64, nonce string, payload any) string {
+	body, err := json.Marshal(payload)
+	if err != nil {
+		panic(err)
+	}
+	tokenHash := sha256.Sum256([]byte(token))
+	payloadHash := sha256.Sum256(body)
+	canonical := fmt.Sprintf("%s\n%d\n%s\n%x", timestamp, sequence, nonce, payloadHash)
+	mac := hmac.New(sha256.New, []byte(fmt.Sprintf("%x", tokenHash)))
+	_, _ = mac.Write([]byte(canonical))
+	return fmt.Sprintf("%x", mac.Sum(nil))
+}
 
 type response struct {
 	Token          string `json:"token"`
@@ -176,6 +191,52 @@ func main() {
 	}
 	if err = conn.ReadJSON(&message); err != nil || message.Resource != "device_activation" {
 		panic("la activacion no produjo evento en vivo")
+	}
+
+	measurementTime := time.Now().UTC().Truncate(time.Second)
+	payload := map[string]any{
+		"schema_version": 1,
+		"measurements": []any{map[string]any{
+			"schema_version":   1,
+			"device_id":        "context-test-device",
+			"sequence":         2,
+			"measured_at":      measurementTime.Format(time.RFC3339),
+			"temperature_c":    23.5,
+			"pressure_pa":      101200,
+			"pressure_hpa":     1012,
+			"sensor_type":      "bmp280",
+			"sensor_address":   "0x76",
+			"sensor_status":    "ok",
+			"firmware_version": "test",
+			"runtime_version":  "test",
+		}},
+	}
+	timestamp := measurementTime.Format(time.RFC3339)
+	nonce := fmt.Sprintf("live-telemetry-%s", suffix)
+	edgeURL := strings.Replace(base, "http", "ws", 1) + "/ws/edge"
+	edgeConn, _, err := websocket.DefaultDialer.Dial(edgeURL, nil)
+	if err != nil {
+		panic(err)
+	}
+	defer edgeConn.Close()
+	_ = edgeConn.SetReadDeadline(time.Now().Add(10 * time.Second))
+	if err = edgeConn.WriteJSON(map[string]any{
+		"type":      "telemetry_batch",
+		"device_id": "context-test-device",
+		"timestamp": timestamp,
+		"sequence":  2,
+		"nonce":     nonce,
+		"signature": telemetrySignature("context-test-device-token-2026", timestamp, 2, nonce, payload),
+		"payload":   payload,
+	}); err != nil {
+		panic(err)
+	}
+	var ack map[string]any
+	if err = edgeConn.ReadJSON(&ack); err != nil || ack["ok"] != true || ack["last_seen_at"] == nil {
+		panic(fmt.Sprintf("la telemetria WebSocket no actualizo last_seen_at: %v", ack))
+	}
+	if err = conn.ReadJSON(&message); err != nil || message.Type != "refresh" || message.Resource != "telemetry" {
+		panic("la telemetria no produjo actualizacion inmediata del panel")
 	}
 	fmt.Println("server-dashboard-live-ok")
 }

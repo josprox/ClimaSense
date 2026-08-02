@@ -1,4 +1,17 @@
 class AnalysisService {
+    func runForever() {
+        $interval = 600
+        try {
+            $configured_interval = JSON::parse(System::env("ANALYSIS_INTERVAL_SECONDS", "600"))
+            ($configured_interval >= 60) ? { $interval = $configured_interval } : {}
+        } catch ($configuration_error) {}
+        System::log("Trabajador ambiental activo; intervalo=" . $interval . " segundos")
+        while (true) {
+            AnalysisService::runDue()
+            System::sleep($interval)
+        }
+    }
+
     func recommendation($location, $average, $outdoor, string $severity) {
         $type = $location["location_type"]
         ($severity == "ok") ? { return "El ambiente permanece dentro del rango configurado. Mantenga la operacion y continue observando la tendencia." } : {}
@@ -13,7 +26,10 @@ class AnalysisService {
     func analyzeDevice($device) {
         $location = GranDB::table("locations")->where("id", $device["location_id"])->where("organization_id", $device["organization_id"])->first()
         empty($location) ? { return false } : {}
-        $samples = GranDB::table("telemetry_measurements")->where("device_id", $device["device_id"])->latest("measured_at")->limit(20)->get()
+        $sample_query = GranDB::table("telemetry_measurements")->where("device_id", $device["device_id"])
+        $previous = GranDB::table("environmental_analyses")->where("device_id", $device["device_id"])->latest("window_ended_at")->first()
+        empty($previous) ? {} : { $sample_query = $sample_query->where("received_at", ">", $previous["window_ended_at"]) }
+        $samples = $sample_query->latest("measured_at")->limit(20)->get()
         (count($samples) > 0) ? {} : { return false }
         $sum = 0
         $minimum = 999
@@ -40,6 +56,7 @@ class AnalysisService {
         ($average < $location["desired_min_c"]) ? { $verdict = "low"; $severity = "alert" } : {}
         ($severity == "ok" && ($average - $location["desired_min_c"] < 1 || $location["desired_max_c"] - $average < 1)) ? { $verdict = "near_limit"; $severity = "warning" } : {}
         $recommendation = AnalysisService::recommendation($location, $average, $outdoor, $severity)
+        $analyzed_at = System::now()
         GranDB::table("environmental_analyses")->insert({
             "organization_id": $device["organization_id"],
             "location_id": $location["id"],
@@ -53,8 +70,8 @@ class AnalysisService {
             "severity": $severity,
             "recommendation": $recommendation,
             "analysis_model": "climasense-context-v1",
-            "window_ended_at": System::now(),
-            "created_at": System::now()
+            "window_ended_at": $analyzed_at,
+            "created_at": $analyzed_at
         })
         LiveUpdate::admin("analysis")
         LiveUpdate::organization($device["organization_id"], "analysis")

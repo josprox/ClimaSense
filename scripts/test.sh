@@ -24,7 +24,7 @@ cleanup_tests() {
   fi
 }
 trap cleanup_tests EXIT INT TERM
-(cd "$root" && sh "$joss" migrate && sh "$joss" run tests/schema.joss && sh "$joss" run tests/saas-schema.joss && sh "$joss" run tests/database-ready.joss && sh "$joss" run tests/client-flow.joss && sh "$joss" run tests/live-updates.joss && sh "$joss" run tests/transport-token.joss && sh "$joss" run tests/syntax.joss)
+(cd "$root" && sh "$joss" migrate && sh "$joss" run tests/schema.joss && sh "$joss" run tests/saas-schema.joss && sh "$joss" run tests/database-ready.joss && sh "$joss" run tests/client-flow.joss && sh "$joss" run tests/live-updates.joss && sh "$joss" run tests/transport-token.joss && sh "$joss" run tests/telemetry-analysis.joss && sh "$joss" run tests/syntax.joss)
 
 if command -v node >/dev/null 2>&1; then
   node --check "$root/public/js/live.js"
@@ -53,6 +53,7 @@ fi
     sleep 1
   done
   [ "$ready" = "1" ] || { cat tests/server-http.log; exit 1; }
+  grep -q 'Trabajador ambiental activo; intervalo=600 segundos' tests/server-http.log || { cat tests/server-http.log; exit 1; }
 
   operator_status="$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:18080/api/v1/devices/test/latest)"
   provision_status="$(curl -s -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: application/json' --data '{}' http://127.0.0.1:18080/api/v1/devices/provision)"

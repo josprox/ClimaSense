@@ -21,8 +21,8 @@ import "api.joss"
 class Main {
     Init main() {
         System::log("ClimaSense Server iniciando")
-        Cron::schedule("climasense-environment-analysis", "*/10 * * * *", {
-            AnalysisService::runDue()
+        async(func() {
+            AnalysisService::runForever()
         })
         Server::start()
     }
