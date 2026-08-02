@@ -2,6 +2,8 @@
 
 > Flujo historico de Buildroot. El despliegue actual con Raspberry Pi OS genera un instalador mediante `scripts/build-raspios-bundle.sh` y no recompila una imagen completa.
 
+Joss tampoco se recompila. `scripts/bootstrap.sh` descarga la ultima release oficial, verifica el SHA-256 y la guarda por version en `cache/joss-release`. El cache solo vuelve a descargar el ZIP cuando cambia la release o falla su checksum.
+
 Estos scripts son alternativos y no modifican `build-os.sh`.
 
 La primera preparacion descarga las fuentes seleccionadas:

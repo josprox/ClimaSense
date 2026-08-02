@@ -25,6 +25,10 @@ edge/storage/
 /server/log.txt
 /server/storage/
 
+# Residuos locales al alternar con la rama autonoma server.
+/log.txt
+/storage/
+
 # Diagnosticos y archivos temporales locales.
 *.log
 *.tmp

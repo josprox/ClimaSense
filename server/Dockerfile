@@ -12,15 +12,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         sqlite3 \
     && rm -rf /var/lib/apt/lists/*
 
-# Los canales WebSocket usados por los paneles requieren Joss 3.6.3.
-ARG JOSS_VERSION=3.6.3
+# Instala la ultima version publicada. Puede fijarse temporalmente con
+# --build-arg JOSS_VERSION=x.y.z para reproducir un despliegue anterior.
+ARG JOSS_VERSION=latest
 ENV JOSS_VERSION=${JOSS_VERSION}
 
 # Instalar binario joss desde el instalador oficial de Docker.
 RUN curl -fsSL \
     https://raw.githubusercontent.com/josprox/Joss-language/main/install/docker-install.sh \
     | bash \
-    && joss version | grep -F "Joss v${JOSS_VERSION}"
+    && joss version
 
 WORKDIR /app
 

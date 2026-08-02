@@ -1,6 +1,6 @@
 # Servidor
 
-Configure `server/.env` fuera del repositorio a partir de `env.example`, ejecute `joss migrate` y despues `joss server start`. Se requiere Joss 3.6.3 o posterior; 3.6.1 no implementa los canales que mantienen los paneles en vivo. El Dockerfile fija 3.6.3 y el script de pruebas rechaza versiones anteriores. El proceso escucha HTTP en el puerto interno 8080; el dominio publico debe terminar HTTPS/WSS en el proxy. PostgreSQL sin SSL solo es aceptable en una red privada equivalente.
+Configure `server/.env` fuera del repositorio a partir de `env.example`, ejecute `joss migrate` y despues `joss server start`. Los canales en vivo requieren como minimo las capacidades incorporadas en Joss 3.6.3, pero el Dockerfile no fija esa version: usa `JOSS_VERSION=latest` y el instalador oficial no interactivo. Para una reproduccion puntual puede pasar `--build-arg JOSS_VERSION=x.y.z`. El proceso escucha HTTP en el puerto interno 8080; el dominio publico debe terminar HTTPS/WSS en el proxy. PostgreSQL sin SSL solo es aceptable en una red privada equivalente.
 
 Si el proxy termina TLS, no defina `TLS_CERT_FILE` ni `TLS_KEY_FILE` en Joss. El puerto 8080 no debe publicarse directamente a Internet.
 

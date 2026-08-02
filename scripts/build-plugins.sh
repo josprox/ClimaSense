@@ -2,6 +2,7 @@
 set -eu
 
 root="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
+joss="$root/scripts/joss-current.sh"
 mkdir -p "$root/dist/plugins"
 
 build_go_target() {
@@ -15,7 +16,7 @@ build_go_target climasense_transport linux arm64 native/linux-arm64/climasense-t
 build_go_target climasense_transport linux amd64 native/linux-amd64/climasense-transport
 
 for plugin in climasense_hardware climasense_transport; do
-  (cd "$root/plugins/$plugin" && go test ./... && joss run src/plugin.joss && joss build package . && joss package inspect "$plugin.jp")
+  (cd "$root/plugins/$plugin" && go test ./... && sh "$joss" run src/plugin.joss && sh "$joss" build package . && sh "$joss" package inspect "$plugin.jp")
   cp "$root/plugins/$plugin/$plugin.jp" "$root/dist/plugins/$plugin.jp"
   (cd "$root/dist/plugins" && sha256sum "$plugin.jp" > "$plugin.jp.sha256")
 done

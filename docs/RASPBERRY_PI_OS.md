@@ -4,7 +4,7 @@ ClimaSense migra a Raspberry Pi OS Lite de 64 bits para usar el kernel y el firm
 
 1. Desde Raspberry Pi Imager grabe Raspberry Pi OS Lite (64-bit), configure usuario, SSH, Raspberry Pi Connect y la red del adaptador USB.
 2. Arranque la Raspberry y confirme acceso por SSH o Connect.
-3. En el equipo de desarrollo genere runtime Joss 3.6.3 o posterior y plugins, y despues ejecute `sh scripts/build-raspios-bundle.sh`.
+3. En el equipo de desarrollo ejecute `sh scripts/bootstrap.sh`; descargara la ultima release oficial y extraera de ella el runtime ARM64. Compile los plugins y ejecute `sh scripts/build-raspios-bundle.sh`.
 4. Copie `dist/climasense-raspios-installer.tar.gz` a la Raspberry y extraigalo.
 5. Ejecute `sudo sh os/raspios/install.sh`. La conexion actual se conserva hasta reiniciar.
 6. Reinicie. El adaptador seleccionado publicara `Configuracion ClimaSense` en `http://192.168.4.1:8080`.

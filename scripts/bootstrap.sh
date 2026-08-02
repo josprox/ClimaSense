@@ -1,10 +1,13 @@
 #!/bin/sh
 set -eu
 
-for command in go joss sha256sum tar; do
+root="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
+
+for command in go curl unzip sha256sum tar; do
   command -v "$command" >/dev/null 2>&1 || { echo "Falta dependencia: $command" >&2; exit 1; }
 done
 
+sh "$root/scripts/prepare-joss-release.sh"
 echo "Go: $(go version)"
-echo "Joss: $(joss version)"
+echo "Joss release: $(sh "$root/scripts/joss-current.sh" version)"
 echo "Bootstrap de ClimaSense completado"
