@@ -2,21 +2,28 @@
 set -eu
 
 root="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
-minimum_joss="3.6.3"
-installed_joss="$(joss version | sed -n 's/^Joss v\([0-9][0-9.]*\).*/\1/p')"
-[ -n "$installed_joss" ] || { echo "No se pudo determinar la version de Joss" >&2; exit 1; }
-[ "$(printf '%s\n%s\n' "$minimum_joss" "$installed_joss" | sort -V | head -n 1)" = "$minimum_joss" ] || {
-  echo "ClimaSense Server requiere Joss >= $minimum_joss; instalado: $installed_joss" >&2
-  exit 1
-}
+joss="$root/scripts/joss-current.sh"
+echo "Probando con $(sh "$joss" version) desde la release oficial"
 
 (cd "$root/plugins/climasense_transport" && go test ./... && go vet ./...)
 
-set -a
-. "$root/tests/env.test.joss"
-set +a
-trap 'rm -f "$root/tests/server-test.sqlite"*' EXIT INT TERM
-(cd "$root" && joss migrate && joss run tests/schema.joss && joss run tests/saas-schema.joss && joss run tests/database-ready.joss && joss run tests/client-flow.joss && joss run tests/live-updates.joss && joss run tests/syntax.joss)
+env_backup=""
+if [ -f "$root/env.joss" ]; then
+  env_backup="$(mktemp)"
+  cp "$root/env.joss" "$env_backup"
+fi
+cp "$root/tests/env.test.joss" "$root/env.joss"
+cleanup_tests() {
+  rm -f "$root/tests/server-test.sqlite"*
+  if [ -n "$env_backup" ]; then
+    cp "$env_backup" "$root/env.joss"
+    rm -f "$env_backup"
+  else
+    rm -f "$root/env.joss"
+  fi
+}
+trap cleanup_tests EXIT INT TERM
+(cd "$root" && sh "$joss" migrate && sh "$joss" run tests/schema.joss && sh "$joss" run tests/saas-schema.joss && sh "$joss" run tests/database-ready.joss && sh "$joss" run tests/client-flow.joss && sh "$joss" run tests/live-updates.joss && sh "$joss" run tests/syntax.joss)
 
 if command -v node >/dev/null 2>&1; then
   node --check "$root/public/js/live.js"
@@ -27,7 +34,7 @@ fi
 
 (
   cd "$root"
-  joss server start > tests/server-http.log 2>&1 &
+  sh "$joss" server start > tests/server-http.log 2>&1 &
   server_pid=$!
   cleanup_http() {
     kill "$server_pid" 2>/dev/null || true

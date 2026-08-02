@@ -9,6 +9,7 @@ env.enc
 *.sqlite-shm
 *.sqlite-wal
 plugins/*/native/
+/cache/
 
 # Estado y diagnosticos locales del servidor.
 log.txt
