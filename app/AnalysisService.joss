@@ -84,8 +84,18 @@ class AnalysisService {
         $sample_query = GranDB::table("telemetry_measurements")->where("device_id", $device["device_id"])
         $previous = GranDB::table("environmental_analyses")->where("device_id", $device["device_id"])->latest("window_ended_at")->first()
         empty($previous) ? {} : { $sample_query = $sample_query->where("received_at", ">", $previous["window_ended_at"]) }
-        $samples = $sample_query->latest("measured_at")->limit(20)->get()
+        $samples = $sample_query->latest("measured_at")->limit(100)->get()
         (count($samples) > 0) ? {} : { return false }
+
+        $min_samples = 10
+        try {
+            $configured_samples = JSON::parse(System::env("ANALYSIS_MIN_SAMPLES", "10"))
+            ($configured_samples >= 1) ? { $min_samples = $configured_samples } : {}
+        } catch ($e) {}
+
+        (empty($previous) == false && count($samples) < $min_samples && System::env("DISABLE_INTERVAL_THROTTLE", "false") != "true") ? {
+            return false
+        } : {}
         float $sum = 0.0
         float $minimum = 999.0
         float $maximum = -999.0
