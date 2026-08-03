@@ -55,7 +55,7 @@ class TenantController {
             "devices": $devices,
             "activation_codes": $activation_codes,
             "measurements": $measurements,
-            "analyses": GranDB::table("environmental_analyses")->where("organization_id", $organization_id)->latest("created_at")->limit(30)->get(),
+            "analyses": GranDB::table("environmental_analyses")->where("organization_id", $organization_id)->latest("created_at")->limit(500)->get(),
             "generated_at": System::now()
         }, 200)
     }
@@ -150,6 +150,36 @@ class TenantController {
         LiveUpdate::admin("location")
         LiveUpdate::organization($organization_id, "location")
         return ApiResponse::json({"ok": true}, 201)
+    }
+
+    func updateLocation($id) {
+        $organization_id = nil
+        try { $organization_id = SaaSAuth::organizationId() } catch ($error) { return ApiResponse::error("Sesion de empresa requerida", 401) }
+        $location = GranDB::table("locations")->where("id", $id)->where("organization_id", $organization_id)->first()
+        empty($location) ? { return ApiResponse::error("Ubicacion no encontrada", 404) } : {}
+        
+        $name = Request::input("name", "")
+        $latitude = Request::input("latitude", nil)
+        $longitude = Request::input("longitude", nil)
+        $minimum = Request::input("desired_min_c", 18)
+        $maximum = Request::input("desired_max_c", 27)
+        (empty($name) || $latitude == nil || $longitude == nil) ? { return ApiResponse::error("Nombre y coordenadas son obligatorios", 422) } : {}
+        ($minimum < $maximum) ? {} : { return ApiResponse::error("El rango termico es invalido", 422) }
+
+        GranDB::table("locations")->where("id", $id)->where("organization_id", $organization_id)->update({
+            "name": $name,
+            "location_type": Request::input("location_type", "general"),
+            "address": Request::input("address", ""),
+            "latitude": $latitude,
+            "longitude": $longitude,
+            "timezone": Request::input("timezone", "America/Mexico_City"),
+            "desired_min_c": $minimum,
+            "desired_max_c": $maximum,
+            "updated_at": System::now()
+        })
+        LiveUpdate::admin("location")
+        LiveUpdate::organization($organization_id, "location")
+        return ApiResponse::json({"ok": true}, 200)
     }
 
     func assignDeviceLocation($device_id) {

@@ -5,6 +5,40 @@
   const api=async(url,options={})=>{const response=await fetch(url,{headers:{Accept:"application/json",...(options.body?{"Content-Type":"application/json"}:{})},...options});if(response.status===401){location.assign("/login");throw new Error("Sesión expirada");}const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.error||`HTTP ${response.status}`);return data;};
   let locations=[];
 
+  let mapInstance=null, mapMarker=null;
+  const updateMap=(lat,lon)=>{
+    lat=Number(lat)||19.4326;
+    lon=Number(lon)||-99.1332;
+    if(!window.L)return;
+    const mapContainer=$("location-map");
+    if(!mapContainer)return;
+
+    if(!mapInstance){
+      mapInstance=L.map('location-map').setView([lat,lon],14);
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{
+        maxZoom:19,
+        attribution:'© OpenStreetMap'
+      }).addTo(mapInstance);
+      mapMarker=L.marker([lat,lon],{draggable:true}).addTo(mapInstance);
+
+      mapMarker.on('dragend',()=>{
+        const pos=mapMarker.getLatLng();
+        $("geo-lat-input").value=pos.lat.toFixed(6);
+        $("geo-lon-input").value=pos.lng.toFixed(6);
+      });
+
+      mapInstance.on('click',e=>{
+        mapMarker.setLatLng(e.latlng);
+        $("geo-lat-input").value=e.latlng.lat.toFixed(6);
+        $("geo-lon-input").value=e.latlng.lng.toFixed(6);
+      });
+    }else{
+      mapInstance.setView([lat,lon],14);
+      mapMarker.setLatLng([lat,lon]);
+    }
+    setTimeout(()=>{if(mapInstance)mapInstance.invalidateSize();},250);
+  };
+
   const render=data=>{
     const noOrgBanner=$("no-org-banner");
     if(data.has_organization===false){
@@ -73,8 +107,42 @@
       });
     });
 
-    $("locations-list").innerHTML=locations.length?locations.map(l=>`<div class="data-row"><div><strong>${esc(l.name)}</strong><small>${esc(l.location_type)} · ${Number(l.desired_min_c).toFixed(1)}–${Number(l.desired_max_c).toFixed(1)}°C</small></div><span class="tag">${esc(l.timezone)}</span></div>`).join(""):'<p class="empty-state">Sin ubicaciones.</p>';
+    $("locations-list").innerHTML=locations.length?locations.map(l=>`
+      <div class="data-row">
+        <div>
+          <strong>${esc(l.name)}</strong>
+          <small>${esc(l.location_type)} · ${Number(l.desired_min_c).toFixed(1)}–${Number(l.desired_max_c).toFixed(1)}°C</small>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span class="tag">${esc(l.timezone)}</span>
+          <button type="button" class="ghost-button" data-edit-location="${l.id}" style="padding:3px 10px; font-size:11px;">✏️ Editar</button>
+        </div>
+      </div>`).join(""):'<p class="empty-state">Sin ubicaciones.</p>';
     
+    document.querySelectorAll("[data-edit-location]").forEach(btn=>{
+      btn.addEventListener("click",()=>{
+        const locId=Number(btn.dataset.editLocation);
+        const loc=locations.find(l=>Number(l.id)===locId);
+        if(!loc)return;
+        $("geo-location-id").value=loc.id;
+        $("geo-name-input").value=loc.name;
+        $("geo-type-select").value=loc.location_type||"general";
+        $("geo-address-input").value=loc.address||"";
+        $("geo-tz-input").value=loc.timezone||"America/Mexico_City";
+        $("geo-lat-input").value=Number(loc.latitude).toFixed(6);
+        $("geo-lon-input").value=Number(loc.longitude).toFixed(6);
+        $("geo-min-input").value=loc.desired_min_c;
+        $("geo-max-input").value=loc.desired_max_c;
+        
+        $("location-dialog-eyebrow").textContent="Editar ubicación";
+        $("location-dialog-title").textContent=`Editar ${loc.name}`;
+        $("location-submit-btn").textContent="Actualizar ubicación";
+        
+        $("location-dialog").showModal();
+        updateMap(loc.latitude, loc.longitude);
+      });
+    });
+
     $("codes-list").innerHTML=codes.length?codes.map(c=>`<div class="data-row"><div><strong>${esc(c.label||"Código de activación")}</strong><small>Creado: ${date(c.created_at)}</small></div><span class="tag ${c.status==="claimed"?"claimed":"available"}">${c.status==="claimed"?"Reclamado por "+esc(c.claimed_by_device):"Disponible"}</span></div>`).join(""):'<p class="empty-state">Sin códigos generados.</p>';
 
     $("devices-list").innerHTML=devices.length?devices.map(d=>`<article class="device-card"><header><strong>${esc(d.name)}</strong><span class="tag">${d.status!=="active"?esc(d.status):(isOnline(d)?"EN LÍNEA":"SIN CONEXIÓN")}</span></header><p>${esc(d.device_id)}<br>Último contacto: ${date(d.last_seen_at)}</p><select data-device="${esc(d.device_id)}"><option value="">Asignar ubicación…</option>${locations.map(l=>`<option value="${Number(l.id)}" ${Number(d.location_id)===Number(l.id)?"selected":""}>${esc(l.name)}</option>`).join("")}</select></article>`).join(""):'<p class="empty-state">Sin dispositivos activados.</p>';
@@ -144,7 +212,21 @@
 
   const load=()=>api("/api/v1/tenant/summary").then(render).catch(console.error);
 
-  document.querySelectorAll("[data-open]").forEach(button=>button.addEventListener("click",()=>{const el=$(button.dataset.open);if(el)el.showModal();}));
+  document.querySelectorAll("[data-open]").forEach(button=>button.addEventListener("click",()=>{
+    const el=$(button.dataset.open);
+    if(el){
+      if(button.dataset.open==="location-dialog"){
+        $("geo-location-id").value="";
+        $("location-form").reset();
+        $("location-dialog-eyebrow").textContent="Nueva ubicación";
+        $("location-dialog-title").textContent="Define el ambiente esperado";
+        $("location-submit-btn").textContent="Guardar ubicación";
+        updateMap(19.4326, -99.1332);
+      }
+      el.showModal();
+    }
+  }));
+
   document.querySelectorAll("[data-close]").forEach(button=>button.addEventListener("click",()=>{const el=$(button.dataset.close);if(el)el.close();}));
 
   const orgForm=$("org-form");
@@ -188,7 +270,7 @@
     });
   }
 
-  // --- Integración de Geolocalización OpenStreetMap Nominatim & GPS GPS ---
+  // --- OpenStreetMap Nominatim & Leaflet Map Integration ---
   const geoAddressInput=$("geo-address-input");
   const geoResults=$("geo-results");
   const geoLatInput=$("geo-lat-input");
@@ -218,9 +300,12 @@
             geoResults.querySelectorAll("[data-lat]").forEach(div=>{
               div.addEventListener("click",()=>{
                 geoAddressInput.value=div.dataset.name;
-                geoLatInput.value=Number(div.dataset.lat).toFixed(6);
-                geoLonInput.value=Number(div.dataset.lon).toFixed(6);
+                const lat=Number(div.dataset.lat);
+                const lon=Number(div.dataset.lon);
+                geoLatInput.value=lat.toFixed(6);
+                geoLonInput.value=lon.toFixed(6);
                 geoResults.style.display="none";
+                updateMap(lat,lon);
               });
             });
           })
@@ -237,13 +322,32 @@
     });
   }
 
+  [geoLatInput, geoLonInput].forEach(inp=>{
+    if(inp){
+      inp.addEventListener("change",()=>{
+        const lat=Number(geoLatInput.value);
+        const lon=Number(geoLonInput.value);
+        if(Number.isFinite(lat)&&Number.isFinite(lon)){
+          updateMap(lat,lon);
+        }
+      });
+    }
+  });
+
   if(geoGpsBtn){
     geoGpsBtn.addEventListener("click",()=>{
+      const geoNotice=$("geo-notice");
       if(!navigator.geolocation){
-        alert("Tu navegador no soporta geolocalización GPS.");
+        if(geoNotice){
+          geoNotice.textContent="📍 Tu navegador no soporta geolocalización GPS. Puedes mover el pin en el mapa para ubicar la posición.";
+          geoNotice.style.display="block";
+        }
+        updateMap(Number(geoLatInput.value)||19.4326, Number(geoLonInput.value)||-99.1332);
         return;
       }
       geoGpsBtn.textContent="Obteniendo…";
+      if(geoNotice)geoNotice.style.display="none";
+
       navigator.geolocation.getCurrentPosition(
         pos=>{
           const lat=pos.coords.latitude;
@@ -251,6 +355,7 @@
           geoLatInput.value=lat.toFixed(6);
           geoLonInput.value=lon.toFixed(6);
           geoGpsBtn.textContent="📍 Mi Ubicación";
+          updateMap(lat,lon);
 
           fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`)
             .then(res=>res.json())
@@ -263,9 +368,13 @@
         },
         err=>{
           geoGpsBtn.textContent="📍 Mi Ubicación";
-          alert("No se pudo obtener la ubicación GPS ("+err.message+").");
+          if(geoNotice){
+            geoNotice.textContent="📍 Ubicación GPS no concedida por el navegador. Puedes arrastrar la marca roja directamente en el mapa para ubicar la posición exacta.";
+            geoNotice.style.display="block";
+          }
+          updateMap(Number(geoLatInput.value)||19.4326, Number(geoLonInput.value)||-99.1332);
         },
-        {enableHighAccuracy:true,timeout:10000}
+        {enableHighAccuracy:true,timeout:8000}
       );
     });
   }
@@ -277,8 +386,13 @@
       const form=event.currentTarget;
       const body=Object.fromEntries(new FormData(form));
       ["latitude","longitude","desired_min_c","desired_max_c"].forEach(k=>body[k]=Number(body[k]));
-      api("/api/v1/tenant/locations",{method:"POST",body:JSON.stringify(body)}).then(()=>{
+      const locId=body.location_id;
+      delete body.location_id;
+
+      const endpoint=locId?`/api/v1/tenant/locations/${encodeURIComponent(locId)}/update`:"/api/v1/tenant/locations";
+      api(endpoint,{method:"POST",body:JSON.stringify(body)}).then(()=>{
         form.reset();
+        $("geo-location-id").value="";
         $("location-dialog").close();
         load();
       }).catch(error=>$("location-message").textContent=error.message);
