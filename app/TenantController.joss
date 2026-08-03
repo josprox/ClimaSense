@@ -32,13 +32,13 @@ class TenantController {
 
         $updated_devices = []
         foreach ($devices as $device) {
-            if (empty($device["last_seen_at"])) {
+            empty($device["last_seen_at"]) ? {
                 $latest_measurement = GranDB::table("telemetry_measurements")->where("device_id", $device["device_id"])->latest("measured_at")->first()
-                if (empty($latest_measurement) == false) {
+                (empty($latest_measurement) == false) ? {
                     $device["last_seen_at"] = $latest_measurement["measured_at"]
                     GranDB::table("devices")->where("device_id", $device["device_id"])->update({"last_seen_at": $latest_measurement["measured_at"]})
-                }
-            }
+                } : {}
+            } : {}
             $updated_devices = append($updated_devices, $device)
         }
         $devices = $updated_devices
