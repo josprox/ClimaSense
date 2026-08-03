@@ -6,6 +6,7 @@ class TelemetryQueue {
         $db->query("PRAGMA journal_mode=WAL")
         $db->query("PRAGMA synchronous=FULL")
         $db->query("CREATE TABLE IF NOT EXISTS telemetry_queue (sequence INTEGER PRIMARY KEY, payload TEXT NOT NULL, created_at TEXT NOT NULL)")
+        $db->query("CREATE TABLE IF NOT EXISTS telemetry_meta (key TEXT PRIMARY KEY, value INTEGER)")
         $db->close()
         return true
     }
@@ -13,16 +14,37 @@ class TelemetryQueue {
     func nextSequence(string $path) {
         $db = new SQLite()
         $db->open($path)
-        $rows = $db->query("SELECT COALESCE(MAX(sequence), 0) + 1 AS next_sequence FROM telemetry_queue")
+        $db->query("CREATE TABLE IF NOT EXISTS telemetry_meta (key TEXT PRIMARY KEY, value INTEGER)")
+        $rows = $db->query("SELECT value FROM telemetry_meta WHERE key = 'last_sequence'")
+        $next = 1
+        (count($rows) > 0) ? {
+            $val = $rows[0]["value"]
+            (empty($val) == false && $val > 0) ? {
+                $next = $val + 1
+            } : {}
+        } : {
+            $max_queue = $db->query("SELECT MAX(sequence) AS max_seq FROM telemetry_queue")
+            (count($max_queue) > 0 && empty($max_queue[0]["max_seq"]) == false && $max_queue[0]["max_seq"] > 0) ? {
+                $next = $max_queue[0]["max_seq"] + 1
+            } : {}
+        }
+        $db->query("INSERT OR REPLACE INTO telemetry_meta(key, value) VALUES ('last_sequence', ?)", [$next])
         $db->close()
-        return $rows[0]["next_sequence"]
+        return $next
     }
 
     func enqueue(string $path, int $sequence, $payload, int $maximum) {
         $db = new SQLite()
         $db->open($path)
+        $db->query("CREATE TABLE IF NOT EXISTS telemetry_meta (key TEXT PRIMARY KEY, value INTEGER)")
         $db->query("INSERT OR IGNORE INTO telemetry_queue(sequence, payload, created_at) VALUES (?, ?, ?)", [$sequence, JSON::stringify($payload), System::now()])
         $db->query("DELETE FROM telemetry_queue WHERE sequence IN (SELECT sequence FROM telemetry_queue ORDER BY sequence ASC LIMIT MAX((SELECT COUNT(*) FROM telemetry_queue) - ?, 0))", [$maximum])
+        $rows = $db->query("SELECT value FROM telemetry_meta WHERE key = 'last_sequence'")
+        $current = 0
+        (count($rows) > 0 && empty($rows[0]["value"]) == false) ? { $current = $rows[0]["value"] } : {}
+        ($sequence > $current) ? {
+            $db->query("INSERT OR REPLACE INTO telemetry_meta(key, value) VALUES ('last_sequence', ?)", [$sequence])
+        } : {}
         $db->close()
         return true
     }

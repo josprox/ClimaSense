@@ -10,6 +10,8 @@ $pending = TelemetryQueue::pending($path, 10)
 (count($pending) == 2) ? {} : { throw "La cola no preservo idempotencia" }
 ($pending[0]["sequence"] == 1) ? {} : { throw "La cola no preservo el orden" }
 
-TelemetryQueue::acknowledge($path, 1)
-(TelemetryQueue::count($path) == 1) ? {} : { throw "La confirmacion elimino registros incorrectos" }
+TelemetryQueue::acknowledge($path, 2)
+(TelemetryQueue::count($path) == 0) ? {} : { throw "La confirmacion elimino registros incorrectos" }
+$next_seq = TelemetryQueue::nextSequence($path)
+($next_seq == 3) ? {} : { throw "La secuencia no fue monotonica despues de acknowledge: " . $next_seq }
 print("edge-queue-ok")
