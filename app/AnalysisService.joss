@@ -31,30 +31,37 @@ class AnalysisService {
         empty($previous) ? {} : { $sample_query = $sample_query->where("received_at", ">", $previous["window_ended_at"]) }
         $samples = $sample_query->latest("measured_at")->limit(20)->get()
         (count($samples) > 0) ? {} : { return false }
-        $sum = 0
-        $minimum = 999
-        $maximum = -999
+        float $sum = 0.0
+        float $minimum = 999.0
+        float $maximum = -999.0
+        float $desired_min = $location["desired_min_c"]
+        float $desired_max = $location["desired_max_c"]
         foreach ($samples as $sample) {
+            float $temperature = 0.0
             $temperature = $sample["temperature_c"]
             $sum = $sum + $temperature
             ($temperature < $minimum) ? { $minimum = $temperature } : {}
             ($temperature > $maximum) ? { $maximum = $temperature } : {}
         }
-        $average = $sum / count($samples)
+        float $average = $sum / count($samples)
         $outdoor = nil
         try {
             $weather = WeatherService::current($location)
-            $outdoor = $weather["temperature_c"]
+            float $outdoor_temp = $weather["temperature_c"]
+            $outdoor = $outdoor_temp
         } catch ($weather_error) {
             $latest_weather = GranDB::table("weather_snapshots")->where("location_id", $location["id"])->latest("observed_at")->first()
-            empty($latest_weather) ? {} : { $outdoor = $latest_weather["temperature_c"] }
+            empty($latest_weather) ? {} : {
+                float $outdoor_snap = $latest_weather["temperature_c"]
+                $outdoor = $outdoor_snap
+            }
         }
 
         $verdict = "optimal"
         $severity = "ok"
-        ($average > $location["desired_max_c"]) ? { $verdict = "high"; $severity = "alert" } : {}
-        ($average < $location["desired_min_c"]) ? { $verdict = "low"; $severity = "alert" } : {}
-        ($severity == "ok" && ($average - $location["desired_min_c"] < 1 || $location["desired_max_c"] - $average < 1)) ? { $verdict = "near_limit"; $severity = "warning" } : {}
+        ($average > $desired_max) ? { $verdict = "high"; $severity = "alert" } : {}
+        ($average < $desired_min) ? { $verdict = "low"; $severity = "alert" } : {}
+        ($severity == "ok" && ($average - $desired_min < 1.0 || $desired_max - $average < 1.0)) ? { $verdict = "near_limit"; $severity = "warning" } : {}
         $recommendation = AnalysisService::recommendation($location, $average, $outdoor, $severity)
         $analyzed_at = System::now()
         GranDB::table("environmental_analyses")->insert({
