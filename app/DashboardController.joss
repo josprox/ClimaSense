@@ -1,7 +1,6 @@
 class DashboardController {
     func index() {
-        (Auth::check() == true) ? {} : { return Response::redirect("/login") }
-        (Auth::hasRole("admin") == true) ? { return Response::redirect("/admin") } : { return Response::redirect("/app") }
+        return Response::view("saas/landing")
     }
 
     func emptySummary(string $detail) {

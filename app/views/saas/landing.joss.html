@@ -1,0 +1,593 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>ClimaSense AI — Monitoreo Ambiental Inteligente & Resiliencia Edge</title>
+  <link rel="stylesheet" href="/public/css/saas.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --font-heading: 'Outfit', sans-serif;
+      --font-body: 'Inter', sans-serif;
+      --font-code: 'JetBrains Mono', monospace;
+    }
+    body {
+      font-family: var(--font-body);
+      background: #050b0e;
+      color: #eaf6f5;
+      overflow-x: hidden;
+    }
+    h1, h2, h3, h4 {
+      font-family: var(--font-heading);
+    }
+    /* Top Header Nav */
+    .landing-header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 5vw;
+      background: rgba(5, 11, 14, 0.85);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid rgba(32, 54, 62, 0.6);
+    }
+    .landing-nav {
+      display: flex;
+      align-items: center;
+      gap: 28px;
+    }
+    .landing-nav a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 600;
+      transition: color 0.2s;
+    }
+    .landing-nav a:hover {
+      color: var(--mint);
+    }
+    .landing-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    /* Hero Section */
+    .hero-section {
+      position: relative;
+      padding: 80px 5vw 100px;
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 40px;
+      align-items: center;
+      max-width: 1300px;
+      margin: 0 auto;
+    }
+    .hero-section::before {
+      content: "";
+      position: absolute;
+      top: -100px;
+      right: -100px;
+      width: 600px;
+      height: 600px;
+      background: radial-gradient(circle, rgba(72, 199, 220, 0.15), transparent 70%);
+      pointer-events: none;
+    }
+    .hero-content h1 {
+      font-size: clamp(42px, 5.2vw, 76px);
+      line-height: 1.05;
+      letter-spacing: -0.04em;
+      margin: 20px 0 24px;
+      background: linear-gradient(135deg, #ffffff 40%, #89a2a7 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .hero-content p {
+      font-size: 18px;
+      line-height: 1.65;
+      color: #9cb5ba;
+      max-width: 580px;
+      margin-bottom: 36px;
+    }
+    .hero-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    /* Hero Interactive Mockup Card */
+    .mockup-card {
+      position: relative;
+      padding: 28px;
+      border: 1px solid rgba(84, 224, 178, 0.25);
+      border-radius: 24px;
+      background: linear-gradient(160deg, rgba(17, 34, 41, 0.95), rgba(7, 16, 21, 0.95));
+      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6), inset 0 0 30px rgba(84, 224, 178, 0.05);
+      backdrop-filter: blur(12px);
+    }
+    .mockup-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-bottom: 18px;
+      border-bottom: 1px solid rgba(32, 54, 62, 0.7);
+      margin-bottom: 20px;
+    }
+    .mockup-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: rgba(84, 224, 178, 0.1);
+      color: var(--mint);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+    .mockup-metrics {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+    .metric-box {
+      padding: 16px;
+      border: 1px solid rgba(32, 54, 62, 0.6);
+      border-radius: 14px;
+      background: rgba(9, 24, 29, 0.6);
+    }
+    .metric-box small {
+      display: block;
+      color: var(--muted);
+      font-size: 11px;
+    }
+    .metric-box strong {
+      display: block;
+      font-size: 28px;
+      margin-top: 6px;
+      color: #ffffff;
+    }
+    .ai-badge-box {
+      padding: 16px;
+      border: 1px solid rgba(72, 199, 220, 0.3);
+      border-radius: 14px;
+      background: linear-gradient(135deg, rgba(72, 199, 220, 0.1), rgba(84, 224, 178, 0.05));
+    }
+    .ai-badge-box header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+    .ai-badge-box strong {
+      color: var(--cyan);
+      font-size: 13px;
+    }
+    .ai-badge-box p {
+      margin: 0;
+      font-size: 12px;
+      line-height: 1.5;
+      color: #c2d8dc;
+    }
+
+    /* Section Styles */
+    .section-wrap {
+      padding: 90px 5vw;
+      max-width: 1300px;
+      margin: 0 auto;
+    }
+    .section-header {
+      text-align: center;
+      max-width: 700px;
+      margin: 0 auto 60px;
+    }
+    .section-header h2 {
+      font-size: clamp(32px, 4vw, 52px);
+      letter-spacing: -0.03em;
+      margin: 12px 0 16px;
+    }
+    .section-header p {
+      color: var(--muted);
+      font-size: 16px;
+      line-height: 1.6;
+    }
+
+    /* Feature Cards Grid */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+      gap: 24px;
+    }
+    .feature-card {
+      padding: 32px;
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      background: rgba(13, 25, 31, 0.7);
+      transition: transform 0.25s, border-color 0.25s;
+    }
+    .feature-card:hover {
+      transform: translateY(-4px);
+      border-color: rgba(84, 224, 178, 0.4);
+    }
+    .feature-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 14px;
+      display: grid;
+      place-items: center;
+      font-size: 22px;
+      margin-bottom: 20px;
+      background: linear-gradient(135deg, rgba(84, 224, 178, 0.2), rgba(72, 199, 220, 0.1));
+      border: 1px solid rgba(84, 224, 178, 0.3);
+      color: var(--mint);
+    }
+    .feature-card h3 {
+      font-size: 22px;
+      margin: 0 0 12px;
+    }
+    .feature-card p {
+      color: #9cb5ba;
+      font-size: 14px;
+      line-height: 1.6;
+      margin: 0;
+    }
+
+    /* Requirements Section */
+    .req-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 28px;
+    }
+    .req-box {
+      padding: 36px;
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      background: linear-gradient(145deg, rgba(17, 34, 41, 0.9), rgba(9, 20, 25, 0.9));
+    }
+    .req-box h3 {
+      font-size: 24px;
+      margin: 0 0 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .req-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: grid;
+      gap: 16px;
+    }
+    .req-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      font-size: 14px;
+      color: #b3c9cd;
+      line-height: 1.5;
+    }
+    .req-list li strong {
+      color: #ffffff;
+    }
+    .req-bullet {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: rgba(84, 224, 178, 0.15);
+      color: var(--mint);
+      display: grid;
+      place-items: center;
+      font-size: 11px;
+      font-weight: 800;
+      flex: none;
+      margin-top: 2px;
+    }
+
+    /* Workflow Steps */
+    .steps-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+    }
+    .step-card {
+      position: relative;
+      padding: 32px;
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      background: rgba(13, 25, 31, 0.6);
+    }
+    .step-num {
+      font-family: var(--font-heading);
+      font-size: 54px;
+      font-weight: 800;
+      color: rgba(84, 224, 178, 0.18);
+      margin-bottom: 12px;
+      line-height: 1;
+    }
+    .step-card h3 {
+      font-size: 20px;
+      margin: 0 0 10px;
+    }
+    .step-card p {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.6;
+      margin: 0 0 16px;
+    }
+    .code-snippet {
+      font-family: var(--font-code);
+      font-size: 11px;
+      padding: 12px;
+      border-radius: 8px;
+      background: #04090c;
+      color: var(--mint);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      white-space: pre-wrap;
+      overflow-x: auto;
+    }
+
+    /* Footer */
+    .landing-footer {
+      padding: 50px 5vw;
+      border-top: 1px solid var(--line);
+      background: #030709;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 20px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .footer-links {
+      display: flex;
+      gap: 24px;
+    }
+    .footer-links a {
+      color: var(--muted);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+    .footer-links a:hover {
+      color: var(--text);
+    }
+
+    @media (max-width: 960px) {
+      .hero-section {
+        grid-template-columns: 1fr;
+        padding-top: 40px;
+      }
+      .req-grid, .steps-grid {
+        grid-template-columns: 1fr;
+      }
+      .landing-nav {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation Bar -->
+  <header class="landing-header">
+    <a class="brand" href="/">
+      <span class="brand-mark">C</span>
+      <span>ClimaSense <b>AI</b></span>
+    </a>
+    <nav class="landing-nav">
+      <a href="#que-hace">¿Qué hace?</a>
+      <a href="#que-se-necesita">¿Qué se necesita?</a>
+      <a href="#arquitectura">Arquitectura</a>
+      <a href="#instalacion">Instalación</a>
+    </nav>
+    <div class="landing-actions">
+      <a class="ghost-button" href="/login">Iniciar sesión</a>
+      <a class="primary-button" href="/app" style="min-height: 40px; padding: 0 16px;">Ir a la Consola <span>→</span></a>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="hero-section">
+    <div class="hero-content">
+      <span class="eyebrow">Plataforma SaaS & IoT Edge v3.6.4</span>
+      <h1>Monitoreo Ambiental Inteligente en Tiempo Real</h1>
+      <p>Conecta tus Raspberry Pi con sensores BMP280, correlaciona microclimas con Open-Meteo y recibe recomendaciones ejecutivas dictadas por <strong>GroqCloud AI Llama 3.3</strong> cada 10 minutos.</p>
+      <div class="hero-buttons">
+        <a class="primary-button" href="/register">Crear cuenta gratis <span>→</span></a>
+        <a class="ghost-button" href="#que-hace">Conocer capacidades</a>
+      </div>
+    </div>
+
+    <!-- Live Interactive Mockup Card -->
+    <div class="mockup-card">
+      <div class="mockup-header">
+        <div>
+          <strong style="display:block; font-size:16px; font-weight:700;">Sala de Servidores T-301</strong>
+          <small style="color:var(--muted); font-size:11px;">Raspberry Pi Zero W · ID: cs-edge-01</small>
+        </div>
+        <span class="mockup-chip"><span class="live-dot"></span> En línea</span>
+      </div>
+
+      <div class="mockup-metrics">
+        <div class="metric-box">
+          <small>Temperatura Interior</small>
+          <strong style="color:var(--mint);">22.4°C</strong>
+        </div>
+        <div class="metric-box">
+          <small>Clima Exterior (Open-Meteo)</small>
+          <strong>18.5°C</strong>
+        </div>
+      </div>
+
+      <div class="ai-badge-box">
+        <header>
+          <strong>🧠 ClimaSense GroqCloud AI (Llama 3.3 70B)</strong>
+          <small style="color:var(--mint); font-weight:700;">Ventana: 10 min</small>
+        </header>
+        <p><strong>Diagnóstico:</strong> El ambiente se mantiene dentro del rango objetivo (18°C–24°C). El aire exterior es más fresco, óptimo para ventilación de respaldo.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Section: ¿Qué hace? -->
+  <section id="que-hace" class="section-wrap">
+    <div class="section-header">
+      <span class="eyebrow">Capacidades y Características</span>
+      <h2>¿Qué hace ClimaSense AI?</h2>
+      <p>Una arquitectura diseñada de extremo a extremo para evitar fallas por sobrecalentamiento, optimizar el uso de energía y garantizar resiliencia total frente a cortes de Internet.</p>
+    </div>
+
+    <div class="features-grid">
+      <article class="feature-card">
+        <div class="feature-icon">📡</div>
+        <h3>Telemetría Edge Nativa</h3>
+        <p>Captura continua de temperatura (°C) y presión barométrica (Pa/hPa) usando el sensor I2C BMP280 mediante un plugin de alto rendimiento compilado en ARM64.</p>
+      </article>
+
+      <article class="feature-card">
+        <div class="feature-icon">🛡️</div>
+        <h3>Resiliencia Offline & Purga 5 Min</h3>
+        <p>Si la red falla, la Raspberry Pi almacena los datos localmente en SQLite (modo WAL) con secuencias monótonas y purga automática a los 5 minutos tras reanudar la sincronización.</p>
+      </article>
+
+      <article class="feature-card">
+        <div class="feature-icon">🌤️</div>
+        <h3>Microclima y OpenStreetMap</h3>
+        <p>Integración con Nominatim OSM y GPS para obtener coordenadas exactas y consultar automáticamente el clima exterior real con Open-Meteo API.</p>
+      </article>
+
+      <article class="feature-card">
+        <div class="feature-icon">🧠</div>
+        <h3>GroqCloud AI Llama 3.3 70B</h3>
+        <p>Análisis contextual cada 10 minutos (10 muestras). Evalúa la tendencia térmica y genera un resumen corto con un diagnóstico extendido y plan de acción de 3 pasos.</p>
+      </article>
+
+      <article class="feature-card">
+        <div class="feature-icon">🧹</div>
+        <h3>Higiene de Datos (Auto-Pruning)</h3>
+        <p>El servidor purga automáticamente las mediciones históricas brutas conservando únicamente las 100 muestras más recientes por dispositivo, manteniendo la base de datos ligera y veloz.</p>
+      </article>
+
+      <article class="feature-card">
+        <div class="feature-icon">📊</div>
+        <h3>Panel Paginado e Historial</h3>
+        <p>El dashboard del cliente limita las tarjetas a las 3 recomendaciones más recientes, ofreciendo el botón "[ Leer más ]" y un modal de historial paginado de 10 en 10.</p>
+      </article>
+    </div>
+  </section>
+
+  <!-- Section: ¿Qué se necesita? -->
+  <section id="que-se-necesita" class="section-wrap" style="border-top: 1px solid var(--line);">
+    <div class="section-header">
+      <span class="eyebrow">Requisitos de Infraestructura</span>
+      <h2>¿Qué se necesita para funcionar?</h2>
+      <p>Todo lo necesario para poner en marcha un nodo de monitoreo inteligente en tu sala de servidores o infraestructura crítica.</p>
+    </div>
+
+    <div class="req-grid">
+      <!-- Hardware -->
+      <div class="req-box">
+        <h3><span>⚡</span> Requisitos de Hardware (Edge Node)</h3>
+        <ul class="req-list">
+          <li>
+            <span class="req-bullet">✓</span>
+            <div><strong>Raspberry Pi:</strong> Cualquier modelo (Zero W, Zero 2 W, 3B+, 4B o 5) corriendo Raspberry Pi OS (64-bit).</div>
+          </li>
+          <li>
+            <span class="req-bullet">✓</span>
+            <div><strong>Sensor de Precisión:</strong> Sensor digital BMP280 conectado por bus I2C (Dirección `0x76` en pines SDA/SCL).</div>
+          </li>
+          <li>
+            <span class="req-bullet">✓</span>
+            <div><strong>Almacenamiento Local:</strong> Tarjeta MicroSD de mínimo 4 GB con soporte de escritura SQLite.</div>
+          </li>
+          <li>
+            <span class="req-bullet">✓</span>
+            <div><strong>Conectividad:</strong> Red Wi-Fi o Ethernet para transmitir lotes WebSocket al servidor SaaS.</div>
+          </li>
+        </ul>
+      </div>
+
+      <!-- Software -->
+      <div class="req-box">
+        <h3><span>☁️</span> Requisitos de Software & Servidor SaaS</h3>
+        <ul class="req-list">
+          <li>
+            <span class="req-bullet">✓</span>
+            <div><strong>Joss Engine Runtime:</strong> Joss v3.6.4 instalado en el servidor (soporta Linux ARM64 y x86_64).</div>
+          </li>
+          <li>
+            <span class="req-bullet">✓</span>
+            <div><strong>Base de Datos:</strong> PostgreSQL 14+ (Producción HestiaCP) o SQLite local (Desarrollo).</div>
+          </li>
+          <li>
+            <span class="req-bullet">✓</span>
+            <div><strong>GroqCloud API Key (Opcional):</strong> Variable `GROQ_API_KEY` para activar Llama-3.3-70b AI recommendations.</div>
+          </li>
+          <li>
+            <span class="req-bullet">✓</span>
+            <div><strong>Nginx / Reverse Proxy:</strong> Soporte de cabeceras WebSocket (`Upgrade`, `Connection`) para eventos en vivo.</div>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- Section: Flujo de Instalación Rápida -->
+  <section id="instalacion" class="section-wrap" style="border-top: 1px solid var(--line);">
+    <div class="section-header">
+      <span class="eyebrow">Despliegue Rápido</span>
+      <h2>Paso a Paso de Instalación</h2>
+      <p>Vincula un nuevo nodo de monitoreo en menos de 5 minutos.</p>
+    </div>
+
+    <div class="steps-grid">
+      <div class="step-card">
+        <div class="step-num">01</div>
+        <h3>Genera el Código</h3>
+        <p>Inicia sesión en la Consola SaaS, registra tu ubicación y genera un <strong>Código de Activación de un solo uso</strong>.</p>
+        <div class="code-snippet">CS-A8F2-99B1-2026</div>
+      </div>
+
+      <div class="step-card">
+        <div class="step-num">02</div>
+        <h3>Instala en la Pi</h3>
+        <p>Descarga el paquete auto-extraíble ARM64 en la Raspberry Pi y ejecuta el instalador automatizado.</p>
+        <div class="code-snippet">tar -xzf climasense-raspios-installer.tar.gz
+sudo sh os/raspios/install.sh</div>
+      </div>
+
+      <div class="step-card">
+        <div class="step-num">03</div>
+        <h3>Recibe Análisis IA</h3>
+        <p>El nodo se conectará por WebSocket y comenzará a enviar muestras. ¡Recibirás diagnósticos cada 10 minutos!</p>
+        <div class="code-snippet">● WebSocket Connected
+● GroqCloud AI Active</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="landing-footer">
+    <div class="brand">
+      <span class="brand-mark">C</span>
+      <span>ClimaSense <b>AI</b></span>
+    </div>
+    <div class="footer-links">
+      <a href="/login">Iniciar sesión</a>
+      <a href="/register">Registrarse</a>
+      <a href="/setup">Configuración Inicial</a>
+      <a href="/app">Consola Tenant</a>
+      <a href="https://github.com/josprox/ClimaSense" target="_blank" rel="noopener">GitHub Repo</a>
+    </div>
+    <div>© 2026 ClimaSense AI Engine v3.6.4 — Proyecto Final de Sistemas Inteligentes.</div>
+  </footer>
+
+</body>
+</html>
