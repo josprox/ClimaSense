@@ -1,6 +1,6 @@
 class DashboardController {
     func index() {
-        return Response::view("saas/landing")
+        return View::render("saas.landing", {"title": "ClimaSense AI — Monitoreo Ambiental e IA"})
     }
 
     func emptySummary(string $detail) {
