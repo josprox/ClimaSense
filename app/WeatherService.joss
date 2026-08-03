@@ -1,6 +1,8 @@
 class WeatherService {
     func current($location) {
-        $weather = ClimaSenseTransport::weatherCurrent($location["latitude"], $location["longitude"], 10)
+        float $lat = $location["latitude"]
+        float $lon = $location["longitude"]
+        $weather = ClimaSenseTransport::weatherCurrent($lat, $lon, 10)
         GranDB::table("weather_snapshots")->insert({
             "organization_id": $location["organization_id"],
             "location_id": $location["id"],
