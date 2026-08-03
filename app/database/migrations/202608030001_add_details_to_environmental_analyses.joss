@@ -1,0 +1,11 @@
+class AddDetailsToEnvironmentalAnalyses {
+    func up() {
+        try {
+            Schema::table("environmental_analyses", func($table) {
+                $table->text("details")->nullable()
+            })
+        } catch ($e) {}
+    }
+
+    func down() {}
+}

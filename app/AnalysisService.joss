@@ -23,6 +23,61 @@ class AnalysisService {
         return "La temperatura esta por debajo del rango objetivo. Revise calefaccion, corrientes de aire y la ubicacion fisica del sensor."
     }
 
+    func defaultDetails($location, $average, $outdoor, string $severity) {
+        $type = $location["location_type"]
+        ($severity == "ok") ? {
+            return "Diagnostico operativo: Las lecturas de temperatura se mantienen estables dentro del rango esperado (" . $location["desired_min_c"] . "°C a " . $location["desired_max_c"] . "°C). No se observan desviaciones criticas. Se sugiere mantener las rutinas de monitoreo habituales."
+        } : {}
+        ($average > $location["desired_max_c"]) ? {
+            $msg = "Diagnostico operativo: La temperatura promedio (" . $average . "°C) ha superado el umbral maximo permitido de " . $location["desired_max_c"] . "°C.\n"
+            $msg = $msg . "Acciones recomendadas:\n"
+            $msg = $msg . "1. Verificar el estado de los sistemas de aire acondicionado y circulacion de aire.\n"
+            $msg = $msg . "2. Inspeccionar posibles fuentes de calor adicionales o bloqueo de flujo.\n"
+            $msg = $msg . "3. Si el clima exterior es fresco (" . (($outdoor != nil) ? ($outdoor . "°C") : "N/D") . "), evaluar ventilacion asistida."
+            return $msg
+        } : {}
+        $low_msg = "Diagnostico operativo: La temperatura promedio (" . $average . "°C) esta por debajo del umbral minimo configurado de " . $location["desired_min_c"] . "°C.\n"
+        $low_msg = $low_msg . "Acciones recomendadas:\n"
+        $low_msg = $low_msg . "1. Verificar sistemas de calefaccion o sellado de corrientes de aire frio.\n"
+        $low_msg = $low_msg . "2. Confirmar que la ubicacion del sensor no este expuesta a ráfagas directas."
+        return $low_msg
+    }
+
+    func generateGroqRecommendation($location, $average, $outdoor, string $severity, $minimum, $maximum) {
+        $groq_key = System::env("GROQ_API_KEY", "")
+        empty($groq_key) ? { return nil } : {}
+        try {
+            $prompt = "Eres ClimaSense AI. Analiza la situacion en la ubicacion '" . $location["name"] . "' (tipo: " . $location["location_type"] . "). "
+            $prompt = $prompt . "Rango objetivo: " . $location["desired_min_c"] . "°C a " . $location["desired_max_c"] . "°C. "
+            $prompt = $prompt . "Lectura interior actual promedio: " . $average . "°C (Min: " . $minimum . "°C, Max: " . $maximum . "°C). "
+            $prompt = $prompt . "Clima exterior: " . (($outdoor != nil) ? ($outdoor . "°C") : "no disponible") . ". "
+            $prompt = $prompt . "Diagnostico: " . $severity . ". "
+            $prompt = $prompt . "Responde UNICAMENTE en JSON valido con dos campos exactos: "
+            $prompt = $prompt . "'recommendation': (texto corto de 1-2 oraciones) y 'details': (explicacion tecnica detallada de 2 a 3 parrafos con puntos de accion)."
+
+            $headers = {
+                "Authorization": "Bearer " . $groq_key,
+                "Content-Type": "application/json"
+            }
+            $body = {
+                "model": "llama-3.3-70b-versatile",
+                "messages": [
+                    {"role": "system", "content": "Responde siempre en español y en formato JSON valido."},
+                    {"role": "user", "content": $prompt}
+                ],
+                "response_format": {"type": "json_object"},
+                "temperature": 0.3
+            }
+            $res = Http::post("https://api.groq.com/openai/v1/chat/completions", JSON::stringify($body), $headers, 10)
+            $res_data = JSON::parse($res["body"])
+            $content = JSON::parse($res_data["choices"][0]["message"]["content"])
+            return $content
+        } catch ($groq_err) {
+            System::log("GroqCloud AI fallback a regla local: " . $groq_err)
+            return nil
+        }
+    }
+
     func analyzeDevice($device) {
         $location = GranDB::table("locations")->where("id", $device["location_id"])->where("organization_id", $device["organization_id"])->first()
         empty($location) ? { return false } : {}
@@ -62,7 +117,19 @@ class AnalysisService {
         ($average > $desired_max) ? { $verdict = "high"; $severity = "alert" } : {}
         ($average < $desired_min) ? { $verdict = "low"; $severity = "alert" } : {}
         ($severity == "ok" && ($average - $desired_min < 1.0 || $desired_max - $average < 1.0)) ? { $verdict = "near_limit"; $severity = "warning" } : {}
+        
         $recommendation = AnalysisService::recommendation($location, $average, $outdoor, $severity)
+        $details = AnalysisService::defaultDetails($location, $average, $outdoor, $severity)
+        $model = "climasense-context-v1"
+        try {
+            $ai = AnalysisService::generateGroqRecommendation($location, $average, $outdoor, $severity, $minimum, $maximum)
+            (empty($ai) == false && empty($ai["recommendation"]) == false) ? {
+                $recommendation = $ai["recommendation"]
+                (empty($ai["details"]) == false) ? { $details = $ai["details"] } : {}
+                $model = "groq-llama-3.3-70b"
+            } : {}
+        } catch ($ai_err) {}
+
         $analyzed_at = System::now()
         GranDB::table("environmental_analyses")->insert({
             "organization_id": $device["organization_id"],
@@ -76,7 +143,8 @@ class AnalysisService {
             "verdict": $verdict,
             "severity": $severity,
             "recommendation": $recommendation,
-            "analysis_model": "climasense-context-v1",
+            "details": $details,
+            "analysis_model": $model,
             "window_ended_at": $analyzed_at,
             "created_at": $analyzed_at
         })

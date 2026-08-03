@@ -42,7 +42,37 @@
     $("indoor-temp").textContent=latest?`${Number(latest.indoor_avg_c).toFixed(1)}°`:"—";
     $("outdoor-temp").textContent=latest?.outdoor_c!=null?`${Number(latest.outdoor_c).toFixed(1)}°`:"—";
 
-    $("tenant-analysis").innerHTML=analyses.length?analyses.map(a=>`<div class="analysis-item ${esc(a.severity)}"><span class="severity"></span><div><strong>${Number(a.indoor_avg_c).toFixed(1)}°C · ${esc(a.verdict)}</strong><p>${esc(a.recommendation)}</p></div><time>${date(a.created_at)}</time></div>`).join(""):'<p class="empty-state">Aún no hay análisis.</p>';
+    window.allAnalyses=analyses;
+    const recentAnalyses=analyses.slice(0,3);
+    const renderAnalysisItem=(a,idx)=>`
+      <div class="analysis-item ${esc(a.severity)}">
+        <span class="severity"></span>
+        <div style="flex:1;">
+          <strong>${Number(a.indoor_avg_c).toFixed(1)}°C · ${esc(a.verdict)}</strong>
+          <p style="margin:4px 0 6px 0;">${esc(a.recommendation)}</p>
+          ${(a.details||a.analysis_model)?`<button type="button" class="text-button" data-read-more="${idx}" style="font-size:12px; padding:0; text-decoration:underline;">[ Leer más ]</button>`:""}
+        </div>
+        <time>${date(a.created_at)}</time>
+      </div>`;
+
+    $("tenant-analysis").innerHTML=recentAnalyses.length?recentAnalyses.map(renderAnalysisItem).join(""):'<p class="empty-state">Aún no hay análisis.</p>';
+    
+    const histBtn=$("view-history-btn");
+    if(histBtn){
+      histBtn.style.display=analyses.length>3?"inline-block":"none";
+    }
+
+    document.querySelectorAll("[data-read-more]").forEach(btn=>{
+      btn.addEventListener("click",()=>{
+        const item=window.allAnalyses[Number(btn.dataset.readMore)];
+        if(!item)return;
+        $("details-model-tag").textContent=esc(item.analysis_model||"ClimaSense AI");
+        $("details-title").textContent=`Análisis (${Number(item.indoor_avg_c).toFixed(1)}°C · ${esc(item.verdict)})`;
+        $("details-content").textContent=item.details||item.recommendation||"Sin detalles adicionales.";
+        $("details-dialog").showModal();
+      });
+    });
+
     $("locations-list").innerHTML=locations.length?locations.map(l=>`<div class="data-row"><div><strong>${esc(l.name)}</strong><small>${esc(l.location_type)} · ${Number(l.desired_min_c).toFixed(1)}–${Number(l.desired_max_c).toFixed(1)}°C</small></div><span class="tag">${esc(l.timezone)}</span></div>`).join(""):'<p class="empty-state">Sin ubicaciones.</p>';
     
     $("codes-list").innerHTML=codes.length?codes.map(c=>`<div class="data-row"><div><strong>${esc(c.label||"Código de activación")}</strong><small>Creado: ${date(c.created_at)}</small></div><span class="tag ${c.status==="claimed"?"claimed":"available"}">${c.status==="claimed"?"Reclamado por "+esc(c.claimed_by_device):"Disponible"}</span></div>`).join(""):'<p class="empty-state">Sin códigos generados.</p>';
@@ -50,6 +80,67 @@
     $("devices-list").innerHTML=devices.length?devices.map(d=>`<article class="device-card"><header><strong>${esc(d.name)}</strong><span class="tag">${d.status!=="active"?esc(d.status):(isOnline(d)?"EN LÍNEA":"SIN CONEXIÓN")}</span></header><p>${esc(d.device_id)}<br>Último contacto: ${date(d.last_seen_at)}</p><select data-device="${esc(d.device_id)}"><option value="">Asignar ubicación…</option>${locations.map(l=>`<option value="${Number(l.id)}" ${Number(d.location_id)===Number(l.id)?"selected":""}>${esc(l.name)}</option>`).join("")}</select></article>`).join(""):'<p class="empty-state">Sin dispositivos activados.</p>';
     document.querySelectorAll("[data-device]").forEach(select=>select.addEventListener("change",()=>{if(!select.value)return;api(`/api/v1/tenant/devices/${encodeURIComponent(select.dataset.device)}/location`,{method:"POST",body:JSON.stringify({location_id:Number(select.value)})}).then(load).catch(error=>alert(error.message));}));
   };
+
+  let histPage=1;
+  const renderHistory=()=>{
+    const analyses=window.allAnalyses||[];
+    const pageSize=10;
+    const totalPages=Math.max(1,Math.ceil(analyses.length/pageSize));
+    if(histPage>totalPages)histPage=totalPages;
+    if(histPage<1)histPage=1;
+    const start=(histPage-1)*pageSize;
+    const pageItems=analyses.slice(start,start+pageSize);
+    
+    $("history-feed").innerHTML=pageItems.length?pageItems.map((a,i)=>`
+      <div class="analysis-item ${esc(a.severity)}">
+        <span class="severity"></span>
+        <div style="flex:1;">
+          <strong>${Number(a.indoor_avg_c).toFixed(1)}°C · ${esc(a.verdict)}</strong>
+          <p style="margin:4px 0 6px 0;">${esc(a.recommendation)}</p>
+          ${(a.details||a.analysis_model)?`<button type="button" class="text-button" data-hist-read-more="${start+i}" style="font-size:12px; padding:0; text-decoration:underline;">[ Leer más ]</button>`:""}
+        </div>
+        <time>${date(a.created_at)}</time>
+      </div>`).join(""):'<p class="empty-state">Sin historial.</p>';
+
+    $("hist-page-info").textContent=`Página ${histPage} de ${totalPages} (${analyses.length} total)`;
+    $("hist-prev").disabled=histPage<=1;
+    $("hist-next").disabled=histPage>=totalPages;
+
+    document.querySelectorAll("[data-hist-read-more]").forEach(btn=>{
+      btn.addEventListener("click",()=>{
+        const item=window.allAnalyses[Number(btn.dataset.histReadMore)];
+        if(!item)return;
+        $("details-model-tag").textContent=esc(item.analysis_model||"ClimaSense AI");
+        $("details-title").textContent=`Análisis (${Number(item.indoor_avg_c).toFixed(1)}°C · ${esc(item.verdict)})`;
+        $("details-content").textContent=item.details||item.recommendation||"Sin detalles adicionales.";
+        $("details-dialog").showModal();
+      });
+    });
+  };
+
+  const viewHistBtn=$("view-history-btn");
+  if(viewHistBtn){
+    viewHistBtn.addEventListener("click",()=>{
+      histPage=1;
+      renderHistory();
+      $("history-dialog").showModal();
+    });
+  }
+
+  const histPrev=$("hist-prev");
+  if(histPrev){
+    histPrev.addEventListener("click",()=>{
+      if(histPage>1){histPage--; renderHistory();}
+    });
+  }
+
+  const histNext=$("hist-next");
+  if(histNext){
+    histNext.addEventListener("click",()=>{
+      const totalPages=Math.ceil((window.allAnalyses||[]).length/10);
+      if(histPage<totalPages){histPage++; renderHistory();}
+    });
+  }
 
   const load=()=>api("/api/v1/tenant/summary").then(render).catch(console.error);
 
