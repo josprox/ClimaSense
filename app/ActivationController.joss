@@ -22,6 +22,7 @@ class ActivationController {
                 "location": "Sin asignar",
                 "status": "active",
                 "activation_status": "active",
+                "last_seen_at": System::now(),
                 "created_at": System::now(),
                 "updated_at": System::now()
             })

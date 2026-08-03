@@ -23,10 +23,25 @@ class TenantController {
         } : {}
 
         $organization_id = $membership["organization_id"]
+        AnalysisService::runDue()
+
         $organization = GranDB::table("organizations")->where("id", $organization_id)->first()
         $locations = GranDB::table("locations")->where("organization_id", $organization_id)->latest("created_at")->get()
         $devices = GranDB::table("devices")->where("organization_id", $organization_id)->latest("updated_at")->get()
         $activation_codes = GranDB::table("activation_codes")->where("organization_id", $organization_id)->latest("created_at")->get()
+
+        $updated_devices = []
+        foreach ($devices as $device) {
+            if (empty($device["last_seen_at"])) {
+                $latest_measurement = GranDB::table("telemetry_measurements")->where("device_id", $device["device_id"])->latest("measured_at")->first()
+                if (empty($latest_measurement) == false) {
+                    $device["last_seen_at"] = $latest_measurement["measured_at"]
+                    GranDB::table("devices")->where("device_id", $device["device_id"])->update({"last_seen_at": $latest_measurement["measured_at"]})
+                }
+            }
+            $updated_devices = append($updated_devices, $device)
+        }
+        $devices = $updated_devices
 
         $device_ids = []
         foreach ($devices as $device) { $device_ids = append($device_ids, $device["device_id"]) }
