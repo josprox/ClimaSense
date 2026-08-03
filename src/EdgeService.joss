@@ -82,6 +82,7 @@ class EdgeService {
             try {
                 $sync = EdgeService::synchronize($config)
                 System::log("Sincronizacion: " . JSON::stringify($sync))
+                TelemetryQueue::purgeStale($path, 300)
             } catch ($network_error) {
                 System::log("Sin red o servidor no disponible; la cola se conserva")
             }

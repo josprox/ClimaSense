@@ -71,6 +71,14 @@ class TelemetryQueue {
         return true
     }
 
+    func purgeStale(string $path, int $max_age_seconds) {
+        $db = new SQLite()
+        $db->open($path)
+        $db->query("DELETE FROM telemetry_queue WHERE created_at < DATETIME('now', '-' || ? || ' seconds')", [$max_age_seconds])
+        $db->close()
+        return true
+    }
+
     func count(string $path) {
         $db = new SQLite()
         $db->open($path)
