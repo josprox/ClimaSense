@@ -80,6 +80,10 @@ class AnalysisService {
             "window_ended_at": $analyzed_at,
             "created_at": $analyzed_at
         })
+        $cutoff = GranDB::table("telemetry_measurements")->where("device_id", $device["device_id"])->latest("measured_at")->offset(100)->first()
+        (empty($cutoff) == false) ? {
+            GranDB::table("telemetry_measurements")->where("device_id", $device["device_id"])->where("measured_at", "<=", $cutoff["measured_at"])->delete()
+        } : {}
         LiveUpdate::admin("analysis")
         LiveUpdate::organization($device["organization_id"], "analysis")
         return true
