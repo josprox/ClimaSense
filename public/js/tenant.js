@@ -20,10 +20,11 @@
 
     locations=data.locations||[];
     const devices=data.devices||[],analyses=data.analyses||[],codes=data.activation_codes||[];
-    const generatedAt=new Date(String(data.generated_at||"").replace(" ","T")).getTime();
+    const parseTs=value=>{if(!value)return NaN;const s=String(value).trim().replace(" ","T");return new Date(s.endsWith("Z")||s.includes("+")?s:s+"Z").getTime();};
+    const generatedAt=parseTs(data.generated_at);
     const isOnline=device=>{
       if(device.status!=="active"||!device.last_seen_at)return false;
-      const lastSeen=new Date(String(device.last_seen_at).replace(" ","T")).getTime();
+      const lastSeen=parseTs(device.last_seen_at);
       return Number.isFinite(generatedAt)&&Number.isFinite(lastSeen)&&Math.abs(generatedAt-lastSeen)<=180000;
     };
     $("organization-name").textContent=data.organization?.name||"Tu ambiente, en contexto";
