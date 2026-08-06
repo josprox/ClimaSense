@@ -1,23 +1,3 @@
-import "app/DeviceAuth.joss"
-import "app/OperatorAuth.joss"
-import "app/ApiResponse.joss"
-import "app/LiveUpdate.joss"
-import "app/DeviceController.joss"
-import "app/TelemetryController.joss"
-import "app/HealthController.joss"
-import "app/DashboardController.joss"
-import "app/SaaSAuth.joss"
-import "app/SaaSAuthController.joss"
-import "app/AdminController.joss"
-import "app/TenantController.joss"
-import "app/ActivationController.joss"
-import "app/EdgeSocketController.joss"
-import "app/DashboardSocketController.joss"
-import "app/WeatherService.joss"
-import "app/AnalysisService.joss"
-import "routes.joss"
-import "api.joss"
-
 class Main {
     Init main() {
         System::log("ClimaSense Server iniciando")

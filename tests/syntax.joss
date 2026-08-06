@@ -1,15 +1,3 @@
-import "app/DeviceAuth.joss"
-import "app/OperatorAuth.joss"
-import "app/ApiResponse.joss"
-import "app/LiveUpdate.joss"
-import "app/DeviceController.joss"
-import "app/TelemetryController.joss"
-import "app/DashboardSocketController.joss"
-import "app/HealthController.joss"
-import "app/database/migrations/202607160001_create_climasense_tables.joss"
-import "routes.joss"
-import "api.joss"
-
 $error_response = ApiResponse::error("denied", 401)
 ($error_response->status_code == 401) ? {} : { throw "ApiResponse no preservo el codigo HTTP" }
 ($error_response->content_type == "application/json") ? {} : { throw "ApiResponse no produjo JSON" }

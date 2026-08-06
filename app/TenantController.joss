@@ -2,7 +2,39 @@ class TenantController {
     func index() {
         (Auth::check() == true) ? {} : { return Response::redirect("/login") }
         (Auth::hasRole("admin") == true) ? { return Response::redirect("/admin") } : {}
-        return View::render("saas.tenant", {"title": "ClimaSense para empresas"})
+        $user_id = SaaSAuth::userId()
+        $membership = SaaSAuth::findMembership()
+        empty($membership) ? {
+            return View::render("saas.tenant", {
+                "title": "ClimaSense para empresas",
+                "has_organization": false,
+                "organization": nil,
+                "locations": [],
+                "devices": [],
+                "activation_codes": [],
+                "measurements": [],
+                "analyses": []
+            })
+        } : {}
+
+        $organization_id = $membership["organization_id"]
+        AnalysisService::runDue()
+
+        $organization = GranDB::table("organizations")->where("id", $organization_id)->first()
+        $locations = GranDB::table("locations")->where("organization_id", $organization_id)->latest("created_at")->get()
+        $devices = GranDB::table("devices")->where("organization_id", $organization_id)->latest("updated_at")->get()
+        $activation_codes = GranDB::table("activation_codes")->where("organization_id", $organization_id)->latest("created_at")->get()
+        $analyses = GranDB::table("environmental_analyses")->where("organization_id", $organization_id)->latest("created_at")->limit(500)->get()
+
+        return View::render("saas.tenant", {
+            "title": "ClimaSense para empresas",
+            "has_organization": true,
+            "organization": $organization,
+            "locations": $locations,
+            "devices": $devices,
+            "activation_codes": $activation_codes,
+            "analyses": $analyses
+        })
     }
 
     func summary() {

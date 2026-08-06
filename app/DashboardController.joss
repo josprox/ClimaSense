@@ -1,6 +1,24 @@
 class DashboardController {
     func index() {
-        return View::render("saas.landing", {"title": "ClimaSense AI — Monitoreo Ambiental e IA"})
+        $device_count = GranDB::table("devices")->count()
+        $active_count = GranDB::table("devices")->where("status", "active")->count()
+        $measurement_count = GranDB::table("telemetry_measurements")->count()
+        $heartbeat_count = GranDB::table("device_heartbeats")->count()
+        $event_count = GranDB::table("security_events")->count()
+        $devices = GranDB::table("devices")->latest("updated_at")->limit(8)->get()
+        $measurements = GranDB::table("telemetry_measurements")->latest("measured_at")->limit(30)->get()
+
+        return View::render("saas.landing", {
+            "title": "ClimaSense AI — Monitoreo Ambiental e IA",
+            "version": "0.2.0",
+            "device_count": $device_count,
+            "active_count": $active_count,
+            "measurement_count": $measurement_count,
+            "heartbeat_count": $heartbeat_count,
+            "event_count": $event_count,
+            "devices": $devices,
+            "measurements": $measurements
+        })
     }
 
     func emptySummary(string $detail) {

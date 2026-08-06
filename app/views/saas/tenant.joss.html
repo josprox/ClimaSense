@@ -4,9 +4,10 @@
 <body class="portal-page tenant-theme">
   <aside class="sidebar"><a class="brand" href="/"><span class="brand-mark">C</span><span>ClimaSense <b>AI</b></span></a><nav><a class="active" href="#status">Estado</a><a href="#locations">Ubicaciones</a><a href="#devices">Dispositivos</a><a href="#codes">Códigos</a><a href="#recommendations">Recomendaciones</a></nav><div class="sidebar-foot"><span class="live-dot"></span><div><strong>Monitoreo activo</strong><small data-live-status>Conectando panel en vivo</small></div><button data-logout>Salir</button></div></aside>
   <main class="portal-main">
-    <header class="portal-header"><div><span class="eyebrow">Portal de cliente</span><h1 id="organization-name">Tu ambiente, en contexto</h1><p>Condiciones interiores, clima exterior y recomendaciones para cada ubicación.</p></div><button class="ghost-button" id="refresh-tenant">Actualizar</button></header>
+    <header class="portal-header"><div><span class="eyebrow">Portal de cliente</span><h1 id="organization-name">{{ ($organization != nil) ? $organization.name : "Tu ambiente, en contexto" }}</h1><p>Condiciones interiores, clima exterior y recomendaciones para cada ubicación.</p></div><button class="ghost-button" id="refresh-tenant">Actualizar</button></header>
     
-    <section id="no-org-banner" class="hero-status" style="display:none; background: rgba(37,99,235,0.08); border-color: rgba(37,99,235,0.2);">
+    {{ ($has_organization == false) ? {
+    <section id="no-org-banner" class="hero-status" style="background: rgba(37,99,235,0.08); border-color: rgba(37,99,235,0.2);">
       <div>
         <span class="status-badge warning">Paso 1: Registra tu Empresa</span>
         <h2>Para comenzar a vincular tus Raspberry Pi, registra tu empresa</h2>
@@ -14,17 +15,66 @@
         <button class="primary-button" style="margin-top:12px;" data-open="org-dialog">Registrar mi Empresa <span>→</span></button>
       </div>
     </section>
+    } : {} }}
 
     <section id="status" class="hero-status"><div><span class="status-badge" id="overall-status">Esperando datos</span><h2 id="status-title">Conecta tu primer ClimaSense Edge</h2><p id="status-copy">Cuando el dispositivo envíe muestras, el análisis aparecerá aquí.</p></div><div class="temperature-pair"><div><small>Interior</small><strong id="indoor-temp">—</strong></div><span>vs</span><div><small>Exterior</small><strong id="outdoor-temp">—</strong></div></div></section>
-    <section class="metric-grid four"><article><small>Ubicaciones</small><strong id="t-locations">—</strong></article><article><small>Dispositivos</small><strong id="t-devices">—</strong></article><article><small>En línea</small><strong id="t-online">—</strong></article><article><small>Análisis</small><strong id="t-analyses">—</strong></article></section>
+    <section class="metric-grid four">
+      <article><small>Ubicaciones</small><strong id="t-locations">{{ count($locations) }}</strong></article>
+      <article><small>Dispositivos</small><strong id="t-devices">{{ count($devices) }}</strong></article>
+      <article><small>En línea</small><strong id="t-online">0</strong></article>
+      <article><small>Análisis</small><strong id="t-analyses">{{ count($analyses) }}</strong></article>
+    </section>
     
     <section class="workspace-grid">
-      <article id="recommendations" class="panel span-2"><div class="panel-title"><div><span class="eyebrow">ClimaSense Intelligence</span><h2>Recomendaciones recientes</h2></div><button class="ghost-button" id="view-history-btn" type="button" style="display:none; padding:4px 12px; font-size:12px;">Ver historial completo</button></div><div id="tenant-analysis" class="analysis-feed"><p class="empty-state">Aún no hay análisis.</p></div></article>
-      <article id="locations" class="panel"><div class="panel-title"><div><span class="eyebrow">Contexto</span><h2>Ubicaciones</h2></div><button class="text-button" data-open="location-dialog">+ Agregar</button></div><div id="locations-list" class="data-list"><p class="empty-state">Sin ubicaciones.</p></div></article>
+      <article id="recommendations" class="panel span-2"><div class="panel-title"><div><span class="eyebrow">ClimaSense Intelligence</span><h2>Recomendaciones recientes</h2></div><button class="ghost-button" id="view-history-btn" type="button" style="display:none; padding:4px 12px; font-size:12px;">Ver historial completo</button></div><div id="tenant-analysis" class="analysis-feed">
+        @foreach($analyses as $a)
+          <div class="analysis-item {{ $a.severity }}">
+            <span class="severity"></span>
+            <div style="flex:1;">
+              <strong>{{ $a.verdict }}</strong>
+              <p style="margin:4px 0 6px 0;">{{ $a.recommendation }}</p>
+            </div>
+            <time>{{ $a.created_at }}</time>
+          </div>
+        @endforeach
+        {{ (empty($analyses) == true) ? {<p class="empty-state">Aún no hay análisis.</p>} : {} }}
+      </div></article>
+
+      <article id="locations" class="panel"><div class="panel-title"><div><span class="eyebrow">Contexto</span><h2>Ubicaciones</h2></div><button class="text-button" data-open="location-dialog">+ Agregar</button></div><div id="locations-list" class="data-list">
+        @foreach($locations as $l)
+          <div class="data-row">
+            <div>
+              <strong>{{ $l.name }}</strong>
+              <small>{{ $l.location_type }} · {{ $l.desired_min_c }}–{{ $l.desired_max_c }}°C</small>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span class="tag">{{ $l.timezone }}</span>
+              <button type="button" class="ghost-button" data-edit-location="{{ $l.id }}" style="padding:3px 10px; font-size:11px;">✏️ Editar</button>
+            </div>
+          </div>
+        @endforeach
+        {{ (empty($locations) == true) ? {<p class="empty-state">Sin ubicaciones.</p>} : {} }}
+      </div></article>
       
-      <article id="codes" class="panel span-3"><div class="panel-title"><div><span class="eyebrow">Conexión Raspberry Pi</span><h2>Códigos de activación</h2></div><button class="primary-button" data-open="activation-dialog">+ Generar Código de Conexión</button></div><div id="codes-list" class="data-list"><p class="empty-state">Sin códigos generados.</p></div></article>
+      <article id="codes" class="panel span-3"><div class="panel-title"><div><span class="eyebrow">Conexión Raspberry Pi</span><h2>Códigos de activación</h2></div><button class="primary-button" data-open="activation-dialog">+ Generar Código de Conexión</button></div><div id="codes-list" class="data-list">
+        @foreach($activation_codes as $c)
+          <div class="data-row">
+            <div><strong>{{ $c.label }}</strong><small>Creado: {{ $c.created_at }}</small></div>
+            <span class="tag {{ ($c.status == 'claimed') ? 'claimed' : 'available' }}">{{ ($c.status == 'claimed') ? 'Reclamado' : 'Disponible' }}</span>
+          </div>
+        @endforeach
+        {{ (empty($activation_codes) == true) ? {<p class="empty-state">Sin códigos generados.</p>} : {} }}
+      </div></article>
       
-      <article id="devices" class="panel span-3"><div class="panel-title"><div><span class="eyebrow">Edge</span><h2>Dispositivos vinculados</h2></div><span class="muted">Activación de un solo uso</span></div><div id="devices-list" class="device-grid"><p class="empty-state">Sin dispositivos activados.</p></div></article>
+      <article id="devices" class="panel span-3"><div class="panel-title"><div><span class="eyebrow">Edge</span><h2>Dispositivos vinculados</h2></div><span class="muted">Activación de un solo uso</span></div><div id="devices-list" class="device-grid">
+        @foreach($devices as $d)
+          <article class="device-card">
+            <header><strong>{{ $d.name }}</strong><span class="tag">{{ $d.status }}</span></header>
+            <p>{{ $d.device_id }}<br>Último contacto: {{ $d.last_seen_at }}</p>
+          </article>
+        @endforeach
+        {{ (empty($devices) == true) ? {<p class="empty-state">Sin dispositivos activados.</p>} : {} }}
+      </div></article>
     </section>
   </main>
 

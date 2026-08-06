@@ -78,6 +78,7 @@ class CreateSaaSTables extends Migration {
             $table->string("verdict", 40)
             $table->string("severity", 24)
             $table->text("recommendation")
+            $table->text("details")->nullable()
             $table->string("analysis_model", 80)->default("climasense-context-v1")
             $table->dateTime("window_ended_at")
             $table->dateTime("created_at")

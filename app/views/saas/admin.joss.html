@@ -10,12 +10,49 @@
   <main class="portal-main">
     <header class="portal-header"><div><span class="eyebrow">Control global</span><h1>Administración SaaS</h1><p>Empresas, dispositivos y salud ambiental en una sola vista.</p></div><button class="ghost-button" id="refresh-admin">Actualizar</button></header>
     <section id="overview" class="metric-grid five">
-      <article><small>Empresas</small><strong id="m-organizations">—</strong></article><article><small>Ubicaciones</small><strong id="m-locations">—</strong></article><article><small>Dispositivos</small><strong id="m-devices">—</strong></article><article><small>Códigos listos</small><strong id="m-codes">—</strong></article><article class="metric-alert"><small>Alertas</small><strong id="m-alerts">—</strong></article>
+      <article><small>Empresas</small><strong id="m-organizations">{{ $metrics.organizations }}</strong></article>
+      <article><small>Ubicaciones</small><strong id="m-locations">{{ $metrics.locations }}</strong></article>
+      <article><small>Dispositivos</small><strong id="m-devices">{{ $metrics.devices }}</strong></article>
+      <article><small>Códigos listos</small><strong id="m-codes">{{ $metrics.available_codes }}</strong></article>
+      <article class="metric-alert"><small>Alertas</small><strong id="m-alerts">{{ $metrics.alerts }}</strong></article>
     </section>
     <section class="workspace-grid">
-      <article id="companies" class="panel span-2"><div class="panel-title"><div><span class="eyebrow">Clientes</span><h2>Empresas registradas</h2></div><button class="text-button" data-open="company-dialog">+ Nueva empresa</button></div><div id="organizations-list" class="data-list"><p class="empty-state">Cargando empresas…</p></div></article>
-      <article id="activation" class="panel"><div class="panel-title"><div><span class="eyebrow">Hardware</span><h2>Crear activación</h2></div></div><form id="activation-form" class="stack-form"><label>Empresa<select name="organization_id" id="activation-organization" required></select></label><label>Etiqueta<input name="label" placeholder="Sala de servidores"></label><button class="primary-button" type="submit">Generar código</button><output id="activation-output" class="code-output">El código aparecerá aquí.</output></form></article>
-      <article id="intelligence" class="panel span-3"><div class="panel-title"><div><span class="eyebrow">Últimos análisis</span><h2>Actividad ambiental</h2></div><span id="admin-updated" class="muted"></span></div><div id="admin-analysis" class="analysis-feed"><p class="empty-state">Sin análisis todavía.</p></div></article>
+      <article id="companies" class="panel span-2">
+        <div class="panel-title"><div><span class="eyebrow">Clientes</span><h2>Empresas registradas</h2></div><button class="text-button" data-open="company-dialog">+ Nueva empresa</button></div>
+        <div id="organizations-list" class="data-list">
+          @foreach($organizations as $org)
+            <div class="data-row">
+              <div>
+                <strong>{{ $org.name }}</strong>
+                <small>{{ $org.contact_email }} · Plan {{ $org.plan }}</small>
+              </div>
+              <span class="tag">{{ $org.status }}</span>
+            </div>
+          @endforeach
+          {{ (empty($organizations) == true) ? {<p class="empty-state">Sin empresas registradas.</p>} : {} }}
+        </div>
+      </article>
+      <article id="activation" class="panel"><div class="panel-title"><div><span class="eyebrow">Hardware</span><h2>Crear activación</h2></div></div><form id="activation-form" class="stack-form"><label>Empresa<select name="organization_id" id="activation-organization" required>
+        @foreach($organizations as $org)
+          <option value="{{ $org.id }}">{{ $org.name }}</option>
+        @endforeach
+      </select></label><label>Etiqueta<input name="label" placeholder="Sala de servidores"></label><button class="primary-button" type="submit">Generar código</button><output id="activation-output" class="code-output">El código aparecerá aquí.</output></form></article>
+      <article id="intelligence" class="panel span-3">
+        <div class="panel-title"><div><span class="eyebrow">Últimos análisis</span><h2>Actividad ambiental</h2></div><span id="admin-updated" class="muted"></span></div>
+        <div id="admin-analysis" class="analysis-feed">
+          @foreach($analyses as $a)
+            <div class="analysis-item {{ $a.severity }}">
+              <span class="severity"></span>
+              <div style="flex:1;">
+                <strong>{{ $a.verdict }}</strong>
+                <p style="margin:4px 0 6px 0;">{{ $a.recommendation }}</p>
+              </div>
+              <time>{{ $a.created_at }}</time>
+            </div>
+          @endforeach
+          {{ (empty($analyses) == true) ? {<p class="empty-state">Sin análisis todavía.</p>} : {} }}
+        </div>
+      </article>
     </section>
   </main>
   <dialog id="company-dialog"><form id="company-form" class="dialog-card"><button type="button" class="dialog-close" data-close="company-dialog">×</button><span class="eyebrow">Alta de cliente</span><h2>Nueva empresa</h2><div class="grid-form"><label>Nombre<input name="name" required></label><label>Identificador<input name="slug" required pattern="[a-z0-9-]+"></label><label>Correo del propietario<input name="email" type="email" required></label><label>Contraseña temporal<input name="password" type="password" minlength="10" required></label><label>Plan<select name="plan"><option value="starter">Starter</option><option value="business">Business</option><option value="enterprise">Enterprise</option></select></label><button class="primary-button full" type="submit">Crear empresa y acceso</button><p class="form-message full" id="company-message"></p></div></form></dialog>
